@@ -1,5 +1,6 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import Logo from "./Logo";
+import { useAuth } from "../context/AuthContext";
 
 const LINKS = [
   { label: "Home", path: "/" },
@@ -9,40 +10,57 @@ const LINKS = [
 
 export default function TopNavBar() {
   const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+
+  const isStaff = ['ADMIN', 'COLLECTOR', 'RECYCLING_COMPANY'].includes((user?.role || '').toUpperCase());
 
   return (
-    <header className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-[#E5E7EB]">
+    <header className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-[#E5E7EB] font-sans bg-white sticky top-0 z-30">
       <Logo />
 
       <nav className="hidden md:flex items-center gap-8 text-sm">
         {LINKS.map((link) => {
           const isActive = location.pathname === link.path;
           return (
-            <a
+            <Link
               key={link.path}
-              href={link.path}
+              to={link.path}
               className={
                 isActive
-                  ? "text-[#0D631B] font-medium border-b-2 border-[#0D631B] pb-1"
-                  : "text-[#374151] hover:text-[#0D631B]"
+                  ? "text-[#0D631B] font-semibold border-b-2 border-[#0D631B] pb-1"
+                  : "text-[#374151] hover:text-[#0D631B] transition-colors"
               }
             >
               {link.label}
-            </a>
+            </Link>
           );
         })}
       </nav>
 
-      <div className="flex items-center gap-4">
-        <a href="/login" className="text-sm text-[#374151] hover:text-[#0D631B]">
-          Login
-        </a>
-        <a
-          href="/signup"
-          className="bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors"
-        >
-          Sign Up
-        </a>
+      <div className="flex items-center gap-3">
+        {isAuthenticated ? (
+          <div className="flex items-center gap-3">
+            <Link
+              to={isStaff ? "/admin/dashboard" : "/dashboard"}
+              className="bg-[#0D631B] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center gap-1.5"
+            >
+              <span>{isStaff ? "Admin Console" : "My Dashboard"}</span>
+              <span className="text-white/80">→</span>
+            </Link>
+          </div>
+        ) : (
+          <>
+            <Link to="/login" className="text-sm font-medium text-[#374151] hover:text-[#0D631B] transition-colors">
+              Login
+            </Link>
+            <Link
+              to="/signup"
+              className="bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors"
+            >
+              Sign Up
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );
