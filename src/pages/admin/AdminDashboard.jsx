@@ -144,7 +144,7 @@ export default function AdminDashboard() {
 
   const stats = [
     { icon: Users, label: "Total Users", value: formatMetricNumber(totalUsers, 0), change: "+12%", color: "#3B82F6", bg: "#DBEAFE" },
-    { icon: Recycle, label: "Waste Collected", value: `${formatMetricNumber(wasteCollected, 0)} kg`, change: "+9%", color: "#0D631B", bg: "#E7F7EC" },
+    { icon: Recycle, label: "Waste Collected", value: `${formatMetricNumber(wasteCollected || overview.wasteCollectedKg || data?.wasteCollectedKg || 0, 0)} kg`, change: "+9%", color: "#0D631B", bg: "#E7F7EC" },
     { icon: Gift, label: "Rewards Issued", value: formatMetricNumber(rewardsIssued, 0), change: "+5%", color: "#7C3AED", bg: "#EFECFF" },
     { icon: Wallet, label: "Revenue", value: `₦${formatMetricNumber(revenue, 0)}`, change: "+20%", color: "#B45309", bg: "#FEF3C7" },
   ];
@@ -153,8 +153,8 @@ export default function AdminDashboard() {
     if (Array.isArray(breakdown)) {
       if (breakdown.length === 0) return [];
       return breakdown.map((item, index) => ({
-        name: item.name || item.label || item.material || item.category || `Category ${index + 1}`,
-        value: toNumber(item.value ?? item.percent ?? item.share ?? item.count ?? 0, 0),
+        name: item.name || item.label || item.material || item.category || item.wasteType || `Category ${index + 1}`,
+        value: toNumber(item.value ?? item.percent ?? item.share ?? item.count ?? item.totalWeightKg ?? item.weightKg ?? 0, 0),
         color: item.color || ["#0D631B", "#4ADE80", "#1A1A2E", "#3B82F6"][index % 4],
       }));
     }
@@ -177,11 +177,29 @@ export default function AdminDashboard() {
       if (monthly.length === 0) return [];
       return monthly.map((item, index) => ({
         month: item.month || item.label || item.name || ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index] || `M${index + 1}`,
-        kg: toNumber(item.kg ?? item.weightKg ?? item.totalKg ?? item.value ?? item.amount, 0),
+        kg: toNumber(item.kg ?? item.weightKg ?? item.totalWeightKg ?? item.totalKg ?? item.value ?? item.amount, 0),
       }));
     }
 
     return [];
+  };
+
+  const normalizeTopRecyclers = (recyclers) => {
+    if (!Array.isArray(recyclers) || recyclers.length === 0) {
+      return TOP_RECYCLERS.map((item, index) => ({
+        name: item.name,
+        weight: item.weight,
+        totalWeightKg: item.weight ? Number.parseFloat(item.weight) || 0 : 0,
+        rank: index + 1,
+      }));
+    }
+
+    return recyclers.map((item, index) => ({
+      rank: index + 1,
+      name: item.name || item.user || item.fullName || `Recycler ${index + 1}`,
+      weight: `${toNumber(item.totalWeightKg ?? item.weightKg ?? item.totalWeight ?? item.weight ?? 0, 0).toLocaleString()} kg`,
+      totalWeightKg: toNumber(item.totalWeightKg ?? item.weightKg ?? item.totalWeight ?? item.weight ?? 0, 0),
+    }));
   };
 
   const normalizeRecentCollections = (recent) => {
@@ -214,10 +232,13 @@ export default function AdminDashboard() {
   );
   const breakdown = normalizeBreakdown(
     pickFirstDefined(
+      data?.overview?.wasteBreakdown,
+      data?.wasteBreakdown,
       data?.overview?.wasteCategoryBreakdown,
       data?.wasteCategoryBreakdown,
       data?.categoryBreakdown,
       data?.stats?.categoryBreakdown,
+      overview.wasteBreakdown,
       overview.wasteCategoryBreakdown,
       overview.categoryBreakdown,
       []
@@ -225,12 +246,23 @@ export default function AdminDashboard() {
   );
   const monthlyData = normalizeMonthlyWaste(
     pickFirstDefined(
+      data?.overview?.wasteCollectedMonthly,
+      data?.wasteCollectedMonthly,
       data?.overview?.monthlyWaste,
       data?.monthlyWaste,
       data?.monthlyCollections,
       data?.stats?.monthlyWaste,
+      overview.wasteCollectedMonthly,
       overview.monthlyWaste,
       overview.monthlyCollections,
+      []
+    )
+  );
+  const topRecyclers = normalizeTopRecyclers(
+    pickFirstDefined(
+      data?.overview?.topLagosRecyclers,
+      data?.topLagosRecyclers,
+      overview.topLagosRecyclers,
       []
     )
   );
@@ -441,7 +473,7 @@ export default function AdminDashboard() {
               <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-xs">
                 <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Top Lagos Recyclers</p>
                 <div className="space-y-3">
-                  {TOP_RECYCLERS.map((r) => (
+                  {topRecyclers.map((r) => (
                     <div key={r.rank} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-[#E7F7EC] text-[#0D631B] text-xs font-bold flex items-center justify-center">

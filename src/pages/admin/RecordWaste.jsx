@@ -337,7 +337,7 @@ export default function RecordWaste() {
                     </span>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-[#1A1A2E]">{u.name}</p>
-                      <p className="text-xs text-[#6B7280]">{u.email} • ID: {u.id}</p>
+                      <p className="text-xs text-[#6B7280]">{u.email}</p>
                     </div>
                   </div>
                   <div className="text-right">

@@ -77,6 +77,60 @@ export function normalizeAdminDashboardPayload(payload) {
       }, 0)
     : 0;
 
+  const monthlyWaste = pickFirstDefined(
+    source.monthlyWaste,
+    overview.monthlyWaste,
+    source.wasteCollectedMonthly,
+    overview.wasteCollectedMonthly,
+    source.monthlyCollections,
+    overview.monthlyCollections,
+    []
+  );
+
+  const wasteCategoryBreakdown = pickFirstDefined(
+    source.wasteCategoryBreakdown,
+    overview.wasteCategoryBreakdown,
+    source.wasteBreakdown,
+    overview.wasteBreakdown,
+    source.categoryBreakdown,
+    overview.categoryBreakdown,
+    []
+  );
+
+  const recentCollections = pickFirstDefined(
+    source.recentCollections,
+    overview.recentCollections,
+    source.recentFeed,
+    overview.recentFeed,
+    []
+  );
+
+  const normalizedMonthlyWaste = Array.isArray(monthlyWaste)
+    ? monthlyWaste.map((item) => ({
+        month: item.month || item.label || item.name || 'Unknown',
+        kg: Number(item.kg ?? item.totalWeightKg ?? item.weightKg ?? item.value ?? item.amount ?? 0),
+      }))
+    : [];
+
+  const normalizedBreakdown = Array.isArray(wasteCategoryBreakdown)
+    ? wasteCategoryBreakdown.map((item, index) => ({
+        name: item.name || item.wasteType || item.category || item.label || `Category ${index + 1}`,
+        value: Number(item.value ?? item.totalWeightKg ?? item.weightKg ?? item.percent ?? item.count ?? 0),
+        color: item.color || ['#0D631B', '#4ADE80', '#1A1A2E', '#3B82F6'][index % 4],
+      }))
+    : [];
+
+  const normalizedRecentCollections = Array.isArray(recentCollections)
+    ? recentCollections.map((row, index) => ({
+        user: row.user?.name || row.userName || row.userEmail || row.name || row.user || `Citizen ${index + 1}`,
+        material: row.material || row.wasteType || row.category || row.type || 'PLASTIC',
+        weight: row.weight || row.weightKg || row.amountKg ? `${row.weight ?? row.weightKg ?? row.amountKg} kg` : '0 kg',
+        weightKg: Number(row.weightKg ?? row.weight ?? row.amountKg ?? 0),
+        date: row.createdAt || row.date || row.recordedAt || 'Today',
+        verified: row.verified ?? true,
+      }))
+    : [];
+
   const dashboard = {
     ...source,
     ...overview,
@@ -84,33 +138,16 @@ export function normalizeAdminDashboardPayload(payload) {
     totalUsers: pickFirstDefined(
       overview.totalUsers,
       source.totalUsers,
-      citizenCount > 0 ? citizenCount : overview.totalCitizens,
       overview.totalCitizens,
       source.totalCitizens,
-      citizenCount || 0
+      citizenCount > 0 ? citizenCount : 0,
+      0
     ),
-    wasteCategoryBreakdown: pickFirstDefined(
-      source.wasteCategoryBreakdown,
-      overview.wasteCategoryBreakdown,
-      source.categoryBreakdown,
-      overview.categoryBreakdown,
-      []
-    ),
-    monthlyWaste: pickFirstDefined(
-      source.monthlyWaste,
-      overview.monthlyWaste,
-      source.monthlyCollections,
-      overview.monthlyCollections,
-      []
-    ),
+    wasteCategoryBreakdown: normalizedBreakdown,
+    monthlyWaste: normalizedMonthlyWaste,
     environmentalImpact: pickFirstDefined(source.environmentalImpact, overview.environmentalImpact, {}),
-    recentCollections: pickFirstDefined(
-      source.recentCollections,
-      overview.recentCollections,
-      source.recentFeed,
-      overview.recentFeed,
-      []
-    ),
+    recentCollections: normalizedRecentCollections,
+    topLagosRecyclers: pickFirstDefined(source.topLagosRecyclers, overview.topLagosRecyclers, []),
     rewardsIssuedCount: pickFirstDefined(
       source.rewardsIssuedCount,
       overview.rewardsIssuedCount,
@@ -134,6 +171,8 @@ export function normalizeAdminDashboardPayload(payload) {
       overview.totalWeightKg,
       source.totalWasteKg,
       overview.totalWasteKg,
+      source.wasteCollectedKg,
+      overview.wasteCollectedKg,
       source.allTimeWeightKg,
       overview.allTimeWeightKg,
       0
