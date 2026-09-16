@@ -8,7 +8,7 @@ const FOOTER_COLUMNS = {
   ],
   Support: [
     { label: "FAQ", href: "/how-it-works#faq" },
-    { label: "Contact Us", href: "#" },
+    { label: "Contact Us", href: "/contact" },
     { label: "Privacy Policy", href: "#" },
   ],
   Brand: [

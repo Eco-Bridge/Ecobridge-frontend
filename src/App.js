@@ -20,6 +20,7 @@ import UserDetail from './pages/admin/UserDetail.jsx';
 import ManageUsers from './pages/admin/ManageUsers.jsx';
 import ManageRewards from './pages/admin/ManageRewards.jsx';
 import Analytics from './pages/admin/Analytics.jsx';
+import Contact from './pages/Contact.jsx'
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
       <Route path="/recycle-history" element={<RecycleHistory />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/contact" element={<Contact />} />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/record-waste" element={<RecordWaste />} />

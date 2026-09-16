@@ -5,6 +5,7 @@ const LINKS = [
   { label: "Home", path: "/" },
   { label: "How It Works", path: "/how-it-works" },
   { label: "About", path: "/about" },
+  { label: "Contact Us", path: "/contact" },
 ];
 
 export default function TopNavBar() {
