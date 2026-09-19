@@ -80,6 +80,15 @@ export function normalizeUsers(response) {
   return possibleUsers.map((user, index) => toUserRecord(user, index));
 }
 
+export function normalizeUsersResponse(response) {
+  return {
+    users: normalizeUsers(response),
+    totalUsers: Number(response?.totalUsers ?? response?.data?.totalUsers ?? 0),
+    totalActiveAccounts: Number(response?.totalActiveAccounts ?? response?.data?.totalActiveAccounts ?? 0),
+    totalFlaggedAccounts: Number(response?.totalFlaggedAccounts ?? response?.data?.totalFlaggedAccounts ?? 0),
+  };
+}
+
 export function normalizeUser(response) {
   if (!response || typeof response !== 'object') return null;
 
@@ -133,6 +142,34 @@ export const userService = {
   async searchUsers(query = '') {
     const users = await this.getUsers(query);
     return users.filter((user) => CITIZEN_ROLES.has(String(user.role || '').toUpperCase()));
+  },
+
+  async getUsersWithMeta(query = '') {
+    const searchText = (query || '').trim();
+    const endpoints = [
+      getSearchEndpoint(searchText, '/api/users'),
+      getSearchEndpoint(searchText, '/api/users/search'),
+    ];
+
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await apiClient.get(endpoint);
+        const normalized = normalizeUsersResponse(response);
+        if (normalized.users.length > 0 || response?.success === true) {
+          return {
+            ...normalized,
+            users: normalized.users.filter((user) => CITIZEN_ROLES.has(String(user.role || '').toUpperCase())),
+          };
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (lastError) throw lastError;
+    return { users: [], totalUsers: 0, totalActiveAccounts: 0, totalFlaggedAccounts: 0 };
   },
 
   async getUserById(id) {

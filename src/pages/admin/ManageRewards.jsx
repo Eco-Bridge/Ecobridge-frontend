@@ -3,44 +3,48 @@ import { Search, Plus, Tag, CheckCircle2, Gift, Smartphone, ShoppingBasket, Penc
 import AdminLayout from "../../layouts/AdminLayout";
 import { rewardsService } from "../../services";
 
-const DEFAULT_REWARDS = [
-  {
-    id: "rew-1",
-    name: "MTN N500 Airtime",
-    category: "Telecom • Airtime",
-    status: "Active",
-    points: 500,
-    stock: "Unlimited",
-    lowStock: false,
-    icon: Smartphone,
-    iconBg: "#FEF3C7",
-    iconColor: "#B45309",
-  },
-  {
-    id: "rew-2",
-    name: "Airtel N200 Airtime",
-    category: "Telecom • Airtime",
-    status: "Active",
-    points: 200,
-    stock: "Unlimited",
-    lowStock: false,
-    icon: Smartphone,
-    iconBg: "#FEE2E2",
-    iconColor: "#DC2626",
-  },
-  {
-    id: "rew-3",
-    name: "Shoprite N1000 Voucher",
-    category: "Retail • Groceries",
-    status: "Low Stock",
-    points: 900,
-    stock: "12 left",
-    lowStock: true,
-    icon: ShoppingBasket,
-    iconBg: "#EFECFF",
-    iconColor: "#7C3AED",
-  },
+const REWARD_CATEGORIES = [
+  { value: "AIRTIME", label: "Airtime" },
+  { value: "VOUCHER", label: "Voucher" },
+  { value: "CASH", label: "Cash" },
+  { value: "MERCHANDISE", label: "Merchandise" },
+  { value: "DISCOUNT", label: "Discount" },
 ];
+
+function normalizeCategory(category) {
+  const value = String(category || "").toUpperCase();
+  return REWARD_CATEGORIES.some((item) => item.value === value) ? value : "VOUCHER";
+}
+
+function getCategoryLabel(category) {
+  return REWARD_CATEGORIES.find((item) => item.value === normalizeCategory(category))?.label || "Voucher";
+}
+
+function getErrorMessage(error, fallback) {
+  return error?.data?.message || error?.data?.error || error?.message || fallback;
+}
+
+function formatReward(reward, index = 0) {
+  const category = normalizeCategory(reward.category);
+  const stockValue = Number(reward.stock);
+  const hasStock = Number.isFinite(stockValue);
+  const lowStock = hasStock && stockValue <= 5 && stockValue > 0;
+
+  return {
+    id: reward.id || `rew-${index}`,
+    name: reward.title || reward.name || "Untitled Reward",
+    category,
+    categoryLabel: getCategoryLabel(category),
+    status: reward.isActive === false ? "Inactive" : lowStock ? "Low Stock" : "Active",
+    points: Number(reward.pointsRequired ?? reward.points ?? 0),
+    stockValue: hasStock ? stockValue : 0,
+    stock: hasStock ? (stockValue > 0 ? `${stockValue} left` : "Out of stock") : "Unlimited",
+    lowStock,
+    icon: category === "AIRTIME" ? Smartphone : ShoppingBasket,
+    iconBg: category === "AIRTIME" ? "#FEF3C7" : "#EFECFF",
+    iconColor: category === "AIRTIME" ? "#B45309" : "#7C3AED",
+  };
+}
 
 export default function ManageRewards() {
   const [search, setSearch] = useState("");
@@ -48,42 +52,45 @@ export default function ManageRewards() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState("Airtime");
+  const [newCategory, setNewCategory] = useState("AIRTIME");
   const [newPoints, setNewPoints] = useState("");
   const [newStock, setNewStock] = useState("");
+  const [summary, setSummary] = useState({ totalRewardsGivenOut: 0, activeCatalog: 0, redeemedThis: 0 });
+  const [editingReward, setEditingReward] = useState(null);
+  const [savingReward, setSavingReward] = useState(false);
+  const [deletingRewardId, setDeletingRewardId] = useState(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     async function loadRewards() {
       try {
-        const data = await rewardsService.getRewards();
-        const list = Array.isArray(data) ? data : data.rewards || DEFAULT_REWARDS;
-        const formatted = list.map((r, i) => ({
-          id: r.id || `rew-${i}`,
-          name: r.title || r.name,
-          category: r.category || "Vouchers",
-          status: r.isActive !== false ? (r.stock <= 5 && r.stock > 0 ? "Low Stock" : "Active") : "Inactive",
-          points: r.pointsRequired ?? r.points ?? 500,
-          stock: r.stock !== undefined ? (r.stock > 0 ? `${r.stock} left` : "Unlimited") : "Unlimited",
-          lowStock: r.stock <= 5 && r.stock > 0,
-          icon: (r.category || "").includes("Airtime") ? Smartphone : ShoppingBasket,
-          iconBg: (r.category || "").includes("Airtime") ? "#FEF3C7" : "#EFECFF",
-          iconColor: (r.category || "").includes("Airtime") ? "#B45309" : "#7C3AED",
-        }));
+        const data = await rewardsService.getRewards(search ? { search } : {});
+        const list = Array.isArray(data.rewards) ? data.rewards : [];
+        setSummary({
+          totalRewardsGivenOut: data.totalRewardsGivenOut,
+          activeCatalog: data.activeCatalog,
+          redeemedThis: data.redeemedThis,
+        });
+        const formatted = list.map(formatReward);
         setRewards(formatted);
       } catch (err) {
-        setRewards(DEFAULT_REWARDS);
+        setRewards([]);
+        setSummary({ totalRewardsGivenOut: 0, activeCatalog: 0, redeemedThis: 0 });
       } finally {
         setLoading(false);
       }
     }
     loadRewards();
-  }, []);
+  }, [search]);
 
   const handleCreateReward = async (e) => {
     e.preventDefault();
+    if (savingReward) return;
+    setActionError("");
+    setSavingReward(true);
     const payload = {
       title: newTitle,
-      category: newCategory,
+      category: normalizeCategory(newCategory),
       pointsRequired: parseInt(newPoints, 10),
       stock: parseInt(newStock, 10) || 100,
       partnerName: newCategory === "Airtime" ? "Telecom Partner" : "Retail Partner",
@@ -91,45 +98,92 @@ export default function ManageRewards() {
 
     try {
       await rewardsService.createReward(payload);
+      setShowAddModal(false);
+      setNewTitle("");
+      setNewPoints("");
+      setNewStock("");
+      setLoading(true);
+      const data = await rewardsService.getRewards(search ? { search } : {});
+      setSummary({
+        totalRewardsGivenOut: data.totalRewardsGivenOut,
+        activeCatalog: data.activeCatalog,
+        redeemedThis: data.redeemedThis,
+      });
+      setRewards((data.rewards || []).map(formatReward));
     } catch (err) {
-      console.warn("Backend add reward fallback:", err.message);
+      setActionError(getErrorMessage(err, "Unable to create this reward. Please check the details and try again."));
+    } finally {
+      setSavingReward(false);
+      setLoading(false);
     }
+  };
 
-    const created = {
-      id: `rew-${Date.now()}`,
-      name: newTitle,
-      category: newCategory,
-      status: "Active",
-      points: parseInt(newPoints, 10),
-      stock: `${newStock || 100} left`,
-      lowStock: false,
-      icon: newCategory === "Airtime" ? Smartphone : ShoppingBasket,
-      iconBg: newCategory === "Airtime" ? "#FEF3C7" : "#EFECFF",
-      iconColor: newCategory === "Airtime" ? "#B45309" : "#7C3AED",
-    };
+  const openEditModal = (reward) => {
+    setEditingReward(reward);
+    setNewTitle(reward.name);
+    setNewCategory(normalizeCategory(reward.category));
+    setNewPoints(String(reward.points));
+    setNewStock(String(reward.stockValue));
+  };
 
-    setRewards((prev) => [created, ...prev]);
-    setShowAddModal(false);
-    setNewTitle("");
-    setNewPoints("");
-    setNewStock("");
+  const handleUpdateReward = async (e) => {
+    e.preventDefault();
+    if (!editingReward || savingReward) return;
+    setActionError("");
+    setSavingReward(true);
+
+    try {
+      const payload = {
+        title: newTitle,
+        category: normalizeCategory(newCategory),
+        pointsRequired: parseInt(newPoints, 10),
+        stock: parseInt(newStock, 10) || 0,
+      };
+      await rewardsService.updateReward(editingReward.id, payload);
+      setRewards((current) => current.map((reward) => (
+        reward.id === editingReward.id
+          ? formatReward({ ...reward, ...payload, id: editingReward.id })
+          : reward
+      )));
+      setEditingReward(null);
+      setNewTitle("");
+      setNewPoints("");
+      setNewStock("");
+    } catch (err) {
+      setActionError(getErrorMessage(err, "Unable to update this reward. Please try again."));
+    } finally {
+      setSavingReward(false);
+    }
   };
 
   const handleDelete = async (id) => {
+    if (deletingRewardId) return;
+    setActionError("");
+    setDeletingRewardId(id);
     try {
       await rewardsService.deleteReward(id);
+      setLoading(true);
+      const data = await rewardsService.getRewards(search ? { search } : {});
+      setSummary({
+        totalRewardsGivenOut: data.totalRewardsGivenOut,
+        activeCatalog: data.activeCatalog,
+        redeemedThis: data.redeemedThis,
+      });
+      setRewards((data.rewards || []).map(formatReward));
     } catch (err) {
-      console.warn("Delete fallback:", err.message);
+      setActionError(getErrorMessage(err, "Unable to remove this reward. Please try again."));
+    } finally {
+      setDeletingRewardId(null);
+      setLoading(false);
     }
-    setRewards((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const filtered = rewards.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = rewards;
 
   const stats = [
-    { icon: Tag, label: "TOTAL REWARDS", value: rewards.length.toString(), color: "#3B82F6", bg: "#DBEAFE" },
-    { icon: CheckCircle2, label: "ACTIVE CATALOG", value: rewards.filter((r) => r.status === "Active").length.toString(), color: "#16A34A", bg: "#DCFCE7" },
-    { icon: Gift, label: "REDEEMED THIS MONTH", value: "348", color: "#7C3AED", bg: "#EFECFF" },
+    { icon: Tag, label: "TOTAL REWARDS GIVEN OUT", value: summary.totalRewardsGivenOut.toLocaleString(), color: "#3B82F6", bg: "#DBEAFE" },
+    { icon: CheckCircle2, label: "ACTIVE CATALOG", value: summary.activeCatalog.toLocaleString(), color: "#16A34A", bg: "#DCFCE7" },
+    { icon: Gift, label: "REDEEMED THIS MONTH", value: summary.redeemedThis.toLocaleString(), color: "#7C3AED", bg: "#EFECFF" },
   ];
 
   return (
@@ -140,12 +194,23 @@ export default function ManageRewards() {
           <p className="text-sm text-[#6B7280]">Manage, add, and track redeemable citizen rewards.</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setActionError("");
+            setEditingReward(null);
+            setNewCategory("AIRTIME");
+            setShowAddModal(true);
+          }}
           className="flex items-center gap-1.5 bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add New Reward
         </button>
       </div>
+
+      {actionError && !showAddModal && !editingReward && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
 
       <div className="mt-6 grid sm:grid-cols-3 gap-4 font-sans">
         {stats.map((stat) => {
@@ -207,7 +272,7 @@ export default function ManageRewards() {
                   </div>
 
                   <p className="mt-3 text-sm font-bold text-[#1A1A2E]">{reward.name}</p>
-                  <p className="text-xs text-[#6B7280]">{reward.category}</p>
+                  <p className="text-xs text-[#6B7280]">{reward.categoryLabel}</p>
 
                   <div className="mt-4 space-y-1.5 text-xs bg-slate-50 p-3 rounded-xl">
                     <div className="flex justify-between">
@@ -226,14 +291,20 @@ export default function ManageRewards() {
                 </div>
 
                 <div className="mt-5 flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-1.5 text-xs border border-[#E5E7EB] text-[#374151] py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <button
+                    onClick={() => openEditModal(reward)}
+                    disabled={Boolean(deletingRewardId) || savingReward}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs border border-[#E5E7EB] text-[#374151] py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
                     <Pencil className="w-3.5 h-3.5" /> Edit
                   </button>
                   <button
                     onClick={() => handleDelete(reward.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 text-xs border border-[#FECACA] text-[#DC2626] py-2 rounded-lg hover:bg-red-50 cursor-pointer"
+                    disabled={Boolean(deletingRewardId) || savingReward}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs border border-[#FECACA] text-[#DC2626] py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                    {deletingRewardId === reward.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    {deletingRewardId === reward.id ? "Removing..." : "Remove"}
                   </button>
                 </div>
               </div>
@@ -242,18 +313,33 @@ export default function ManageRewards() {
         </div>
       )}
 
-      {/* Add Reward Modal */}
-      {showAddModal && (
+      {/* Add/Edit Reward Modal */}
+      {(showAddModal || editingReward) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 font-sans">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-lg">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#1A1A2E]">Add New Reward to Catalog</h2>
-              <button onClick={() => setShowAddModal(false)} className="text-[#6B7280] hover:text-[#374151]">
+              <h2 className="text-base font-bold text-[#1A1A2E]">
+                {editingReward ? "Edit Reward" : "Add New Reward to Catalog"}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingReward(null);
+                }}
+                disabled={savingReward}
+                className="text-[#6B7280] hover:text-[#374151] disabled:opacity-50"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateReward} className="mt-4 space-y-3.5">
+            {actionError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {actionError}
+              </div>
+            )}
+
+            <form onSubmit={editingReward ? handleUpdateReward : handleCreateReward} className="mt-4 space-y-3.5">
               <div>
                 <label className="block text-xs font-medium text-[#374151] mb-1">Reward Title</label>
                 <input
@@ -273,9 +359,11 @@ export default function ManageRewards() {
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm bg-white focus:outline-none"
                 >
-                  <option value="Airtime">Airtime</option>
-                  <option value="Vouchers">Vouchers</option>
-                  <option value="Discounts">Discounts</option>
+                  {REWARD_CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -307,16 +395,22 @@ export default function ManageRewards() {
               <div className="mt-5 flex justify-end gap-2 pt-2 border-t border-[#E5E7EB]">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="text-sm border border-[#E5E7EB] text-[#374151] px-4 py-2 rounded-lg hover:bg-gray-50"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingReward(null);
+                  }}
+                  disabled={savingReward}
+                  className="text-sm border border-[#E5E7EB] text-[#374151] px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="text-sm bg-[#0D631B] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15]"
+                  disabled={savingReward}
+                  className="flex items-center gap-1.5 text-sm bg-[#0D631B] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Create Reward
+                  {savingReward && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingReward ? (editingReward ? "Saving..." : "Creating...") : (editingReward ? "Save Changes" : "Create Reward")}
                 </button>
               </div>
             </form>

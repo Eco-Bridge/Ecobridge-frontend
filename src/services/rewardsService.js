@@ -1,12 +1,27 @@
 import apiClient from './apiClient';
 
+export function normalizeRewardsResponse(response) {
+  const data = response?.data && typeof response.data === 'object' && !Array.isArray(response.data)
+    ? response.data
+    : response || {};
+
+  return {
+    rewards: Array.isArray(data.rewards) ? data.rewards : Array.isArray(response) ? response : [],
+    totalRewardsGivenOut: Number(data.totalRewardsGivenOut ?? data.summary?.totalRewardsGivenOut ?? 0),
+    activeCatalog: Number(data.activeCatalog ?? data.summary?.activeCatalog ?? 0),
+    redeemedThis: Number(data.redeemedThis ?? data.summary?.redeemedThis ?? 0),
+    pagination: data.pagination || {},
+  };
+}
+
 export const rewardsService = {
   /**
    * Browse active rewards catalog (Public)
    * Supports ?category, ?minPoints, ?maxPoints, ?page, ?limit
    */
   async getRewards(params = {}) {
-    return apiClient.get('/api/rewards', params);
+    const response = await apiClient.get('/api/rewards', params);
+    return normalizeRewardsResponse(response);
   },
 
   /**

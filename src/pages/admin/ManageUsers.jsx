@@ -12,14 +12,23 @@ export default function ManageUsers() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [userList, setUserList] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalActiveAccounts, setTotalActiveAccounts] = useState(0);
+  const [totalFlaggedAccounts, setTotalFlaggedAccounts] = useState(0);
 
   useEffect(() => {
     async function loadUsers() {
       try {
-        const users = await userService.getUsers(search);
-        setUserList(Array.isArray(users) ? users : []);
+        const response = await userService.getUsersWithMeta(search);
+        setUserList(response.users);
+        setTotalUsers(response.totalUsers || response.users.length);
+        setTotalActiveAccounts(response.totalActiveAccounts);
+        setTotalFlaggedAccounts(response.totalFlaggedAccounts);
       } catch (err) {
         setUserList([]);
+        setTotalUsers(0);
+        setTotalActiveAccounts(0);
+        setTotalFlaggedAccounts(0);
       }
     }
 
@@ -29,7 +38,7 @@ export default function ManageUsers() {
   const filtered = userList.filter((u) => {
     const matchesSearch =
       (u.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (u.id || "").toLowerCase().includes(search.toLowerCase()) ||
+      String(u.id || "").toLowerCase().includes(search.toLowerCase()) ||
       (u.phone || "").includes(search) ||
       (u.email || "").toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "All" || u.status === statusFilter;
@@ -41,8 +50,8 @@ export default function ManageUsers() {
   const currentPage = Math.min(page, totalPages);
   const pageUsers = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const activeCount = userList.filter((u) => u.status === "Active").length;
-  const disabledCount = userList.filter((u) => u.status === "Disabled").length;
+  const activeCount = totalActiveAccounts || userList.filter((u) => u.status === "Active").length;
+  const disabledCount = totalFlaggedAccounts || userList.filter((u) => u.status === "Disabled").length;
 
   const handleToggleStatus = async (user) => {
     const nextStatus = user.status === "Active" ? "Disabled" : "Active";
@@ -89,21 +98,21 @@ export default function ManageUsers() {
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
           <p className="text-xs text-[#6B7280]">TOTAL USERS</p>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xl font-bold text-[#1A1A2E]">{userList.length.toLocaleString()}</p>
+            <p className="text-xl font-bold text-[#1A1A2E]">{totalUsers.toLocaleString()}</p>
             <UsersIcon className="w-5 h-5 text-[#9CA3AF]" />
           </div>
         </div>
         <div className="bg-white border-l-4 border-[#16A34A] border-y border-r rounded-xl p-4 shadow-xs">
           <p className="text-xs text-[#6B7280]">ACTIVE ACCOUNTS</p>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xl font-bold text-[#1A1A2E]">{activeCount || 12}</p>
+            <p className="text-xl font-bold text-[#1A1A2E]">{activeCount.toLocaleString()}</p>
             <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />
           </div>
         </div>
         <div className="bg-white border-l-4 border-[#DC2626] border-y border-r rounded-xl p-4 shadow-xs">
           <p className="text-xs text-[#6B7280]">FLAGGED / DISABLED</p>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xl font-bold text-[#1A1A2E]">{disabledCount || 1}</p>
+            <p className="text-xl font-bold text-[#1A1A2E]">{disabledCount.toLocaleString()}</p>
             <Ban className="w-5 h-5 text-[#DC2626]" />
           </div>
         </div>
@@ -176,7 +185,6 @@ export default function ManageUsers() {
                       </span>
                       <div>
                         <p className="text-[#1A1A2E] font-medium leading-tight">{u.name}</p>
-                        <p className="text-xs text-[#9CA3AF]">#{u.id}</p>
                       </div>
                     </div>
                   </td>

@@ -23,44 +23,6 @@ import {
 import AdminLayout from "../../layouts/AdminLayout";
 import { dashboardService, rewardsService } from "../../services";
 
-const DEFAULT_MONTHLY_WASTE = [
-  { month: "Jan", kg: 320 },
-  { month: "Feb", kg: 380 },
-  { month: "Mar", kg: 290 },
-  { month: "Apr", kg: 420 },
-  { month: "May", kg: 480 },
-  { month: "Jun", kg: 510 },
-  { month: "Jul", kg: 560 },
-  { month: "Aug", kg: 600 },
-  { month: "Sep", kg: 640 },
-  { month: "Oct", kg: 680 },
-  { month: "Nov", kg: 720 },
-  { month: "Dec", kg: 820 },
-];
-
-const DEFAULT_USER_GROWTH = [
-  { month: "Jan", users: 40 },
-  { month: "Feb", users: 55 },
-  { month: "Mar", users: 60 },
-  { month: "Apr", users: 75 },
-  { month: "May", users: 85 },
-  { month: "Jun", users: 95 },
-  { month: "Jul", users: 105 },
-  { month: "Aug", users: 115 },
-  { month: "Sep", users: 125 },
-  { month: "Oct", users: 135 },
-  { month: "Nov", users: 145 },
-  { month: "Dec", users: 152 },
-];
-
-const DEFAULT_WASTE_BY_TYPE = [
-  { name: "Plastic", value: 40, color: "#3B82F6" },
-  { name: "Paper", value: 25, color: "#F59E0B" },
-  { name: "Metal", value: 20, color: "#9CA3AF" },
-  { name: "Glass", value: 10, color: "#06B6D4" },
-  { name: "Electronics", value: 5, color: "#7C3AED" },
-];
-
 const WASTE_COLORS = {
   PLASTIC: "#3B82F6",
   PAPER_CARDBOARD: "#F59E0B",
@@ -80,16 +42,10 @@ export default function Analytics() {
     totalPoints: 0,
     totalRedemptions: 0,
   });
-  const [monthlyWaste, setMonthlyWaste] = useState(DEFAULT_MONTHLY_WASTE);
-  const [userGrowth, setUserGrowth] = useState(DEFAULT_USER_GROWTH);
-  const [wasteByType, setWasteByType] = useState(DEFAULT_WASTE_BY_TYPE);
-  const [mostRedeemed, setMostRedeemed] = useState([
-    { name: "MTN N500", count: 145 },
-    { name: "Airtel N200", count: 98 },
-    { name: "Shoprite N1000", count: 67 },
-    { name: "MTN N100", count: 52 },
-    { name: "Discount", count: 25 },
-  ]);
+  const [monthlyWaste, setMonthlyWaste] = useState([]);
+  const [userGrowth, setUserGrowth] = useState([]);
+  const [wasteByType, setWasteByType] = useState([]);
+  const [mostRedeemed, setMostRedeemed] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,89 +60,151 @@ export default function Analytics() {
         if (!isMounted) return;
 
         if (dashRes.status === "fulfilled") {
-          const data = dashRes.value;
-          const overview = data?.overview || data || {};
-          const usersByRole = Array.isArray(data?.usersByRole) ? data.usersByRole : [];
-          const totalUsers =
-            Number(overview.totalUsers ?? data?.totalUsers ?? 0) ||
-            usersByRole.reduce((sum, item) => sum + Number(item.count || 0), 0) ||
-            0;
+          const data = dashRes.value || {};
+          const overview = data.overview && typeof data.overview === "object" ? data.overview : data;
+          const usersByRole = Array.isArray(data.usersByRole) ? data.usersByRole : [];
+
+          const citizenCount = usersByRole.reduce((sum, item) => {
+            const role = String(item?.role || "").toUpperCase();
+            if (role === "CITIZEN") {
+              return sum + Number(item?.count ?? item?.total ?? item?.value ?? 0);
+            }
+            return sum;
+          }, 0);
+
+          const totalUsers = Number(
+            citizenCount > 0
+              ? citizenCount
+              : overview.totalCitizens ?? data.totalCitizens ?? overview.totalUsers ?? data.totalUsers ?? 0
+          );
+
+          const totalWasteKg = Number(
+            overview.totalWeightRecycledKg ??
+            overview.totalWasteKg ??
+            overview.totalWeightKg ??
+            data.totalWasteKg ??
+            data.totalWeightKg ??
+            data.allTimeWeightKg ??
+            0
+          );
+
+          const totalPoints = Number(
+            overview.totalPointsDistributed ??
+            overview.totalPoints ??
+            data.totalPoints ??
+            data.allTimePoints ??
+            0
+          );
+
+          const totalRedemptions = Number(
+            overview.totalRewardsRedeemed ??
+            overview.totalRedemptions ??
+            data.totalRedemptions ??
+            data.redemptionsCount ??
+            0
+          );
 
           setStats({
             totalUsers,
-            totalWasteKg: Number(overview.totalWeightRecycledKg ?? data?.totalWeightKg ?? data?.allTimeWeightKg ?? 0),
-            totalPoints: Number(overview.totalPointsDistributed ?? data?.totalPoints ?? data?.allTimePoints ?? 0),
-            totalRedemptions: Number(overview.totalRewardsRedeemed ?? data?.totalRedemptions ?? data?.redemptionsCount ?? 0),
+            totalWasteKg,
+            totalPoints,
+            totalRedemptions,
           });
 
-          const breakdown = data?.wasteCategoryBreakdown ?? data?.categoryBreakdown ?? data?.wasteByCategory ?? null;
+          const breakdown =
+            data.wasteCategoryBreakdown ??
+            data.categoryBreakdown ??
+            data.wasteBreakdown ??
+            overview.wasteCategoryBreakdown ??
+            overview.wasteBreakdown ??
+            overview.categoryBreakdown ??
+            [];
+
           if (Array.isArray(breakdown) && breakdown.length > 0) {
             const pieData = breakdown.map((item, index) => ({
-              name: item.name || item.category || item.label || `Category ${index + 1}`,
-              value: Number(item.value ?? item.percent ?? item.count ?? 0),
-              color: item.color || WASTE_COLORS[item.key] || WASTE_COLORS.OTHER || "#6B7280",
+              name: item.name || item.category || item.label || item.wasteType || `Category ${index + 1}`,
+              value: Number(item.value ?? item.percent ?? item.share ?? item.count ?? item.totalWeightKg ?? item.weightKg ?? 0),
+              color: item.color || WASTE_COLORS[String(item.key || item.name || item.category || "OTHER").toUpperCase()] || WASTE_COLORS.OTHER || "#6B7280",
             }));
             setWasteByType(pieData);
           } else if (breakdown && typeof breakdown === "object") {
             const entries = Object.entries(breakdown);
             if (entries.length > 0) {
-              const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
-              const pieData = entries.map(([key, value]) => ({
+              const pieData = entries.map(([key, value], index) => ({
                 name: key
-                  .replace("_", "/")
-                  .replace("PAPER_CARDBOARD", "Paper")
-                  .replace("CANS_METAL", "Metal")
-                  .replace("E_WASTE", "E-Waste")
-                  .replace(/^(.)(.*)/, (m, a, b) => a + b.toLowerCase()),
-                value: total > 0 ? Math.round((Number(value) / total) * 100) : 0,
-                color: WASTE_COLORS[key] ?? "#6B7280",
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (char) => char.toUpperCase()),
+                value: Number(value) || 0,
+                color: WASTE_COLORS[String(key).toUpperCase()] || ["#0D631B", "#3B82F6", "#F59E0B", "#7C3AED", "#9CA3AF"][index % 5],
               }));
               setWasteByType(pieData);
+            } else {
+              setWasteByType([]);
             }
+          } else {
+            setWasteByType([]);
           }
 
-          const monthly = data?.monthlyWaste ?? data?.monthlyCollections ?? null;
+          const monthly =
+            data.monthlyWaste ??
+            data.wasteCollectedMonthly ??
+            data.monthlyCollections ??
+            overview.monthlyWaste ??
+            overview.wasteCollectedMonthly ??
+            overview.monthlyCollections ??
+            [];
+
           if (Array.isArray(monthly) && monthly.length > 0) {
-            const formatted = monthly.map((m) => ({
-              month: m.month
-                ? MONTH_NAMES[parseInt(m.month, 10) - 1] ?? m.month
-                : m.label ?? m.name ?? "",
-              kg: Number(m.weightKg ?? m.kg ?? m.amount ?? 0),
+            const formatted = monthly.map((item, index) => ({
+              month: item.month || item.label || item.name || MONTH_NAMES[index] || `M${index + 1}`,
+              kg: Number(item.kg ?? item.weightKg ?? item.totalWeightKg ?? item.value ?? item.amount ?? 0),
             }));
             setMonthlyWaste(formatted);
+          } else {
+            setMonthlyWaste([]);
           }
 
-          const growth = data?.userGrowth ?? data?.monthlyUsers ?? null;
+          const growth =
+            data.userGrowth ??
+            data.monthlyUsers ??
+            overview.userGrowth ??
+            overview.monthlyUsers ??
+            [];
+
           if (Array.isArray(growth) && growth.length > 0) {
-            const formatted = growth.map((g) => ({
-              month: g.month
-                ? MONTH_NAMES[parseInt(g.month, 10) - 1] ?? g.month
-                : g.label ?? "",
-              users: Number(g.count ?? g.users ?? 0),
+            const formatted = growth.map((item, index) => ({
+              month: item.month || item.label || item.name || MONTH_NAMES[index] || `M${index + 1}`,
+              users: Number(item.users ?? item.count ?? item.total ?? item.value ?? 0),
             }));
             setUserGrowth(formatted);
+          } else {
+            setUserGrowth([]);
           }
         }
 
-        // Most redeemed rewards
         if (redemptionsRes.status === "fulfilled") {
-          const redemptions = redemptionsRes.value?.redemptions ?? redemptionsRes.value ?? [];
+          const redemptions = redemptionsRes.value?.redemptions ?? redemptionsRes.value?.data ?? redemptionsRes.value ?? [];
           if (Array.isArray(redemptions) && redemptions.length > 0) {
-            // Count redemptions per reward
             const countMap = {};
             redemptions.forEach((r) => {
-              const name = r.reward?.title ?? r.rewardName ?? r.name ?? "Unknown";
+              const name = r.reward?.title ?? r.rewardName ?? r.name ?? r.reward?.name ?? "Unknown";
               countMap[name] = (countMap[name] || 0) + 1;
             });
             const sorted = Object.entries(countMap)
               .map(([name, count]) => ({ name, count }))
               .sort((a, b) => b.count - a.count)
               .slice(0, 5);
-            if (sorted.length > 0) setMostRedeemed(sorted);
+            setMostRedeemed(sorted.length > 0 ? sorted : []);
+          } else {
+            setMostRedeemed([]);
           }
         }
       } catch (err) {
         console.error("Analytics load error:", err);
+        setMonthlyWaste([]);
+        setUserGrowth([]);
+        setWasteByType([]);
+        setMostRedeemed([]);
       } finally {
         if (isMounted) setLoading(false);
       }

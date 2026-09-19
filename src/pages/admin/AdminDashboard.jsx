@@ -268,12 +268,16 @@ export default function AdminDashboard() {
   );
 
   const totalBreakdownValue = breakdown.reduce((sum, item) => sum + toNumber(item.value, 0), 0);
-  const chartBreakdown = totalBreakdownValue > 0
+  const breakdownWithPercentages = totalBreakdownValue > 0
     ? breakdown.map((item) => ({
         ...item,
-        value: (toNumber(item.value, 0) / totalBreakdownValue) * 100,
+        percentage: (toNumber(item.value, 0) / totalBreakdownValue) * 100,
       }))
-    : breakdown;
+    : breakdown.map((item) => ({ ...item, percentage: 0 }));
+  const chartBreakdown = breakdownWithPercentages.map((item) => ({
+    ...item,
+    value: item.percentage,
+  }));
   const hasMonthlyData = monthlyData.length > 0;
   const hasBreakdownData = breakdown.length > 0;
   const hasRecentCollections = recentCollections.length > 0;
@@ -370,18 +374,20 @@ export default function AdminDashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold text-[#1A1A2E]">{totalBreakdownValue > 0 ? "100%" : "0%"}</span>
+                      <span className="text-lg font-bold text-[#1A1A2E]">
+                        {totalBreakdownValue > 0 ? "100%" : "0%"}
+                      </span>
                     </div>
                   </div>
 
                   <div className="mt-3 space-y-1.5">
-                    {breakdown.map((item, idx) => (
+                    {breakdownWithPercentages.map((item, idx) => (
                       <div key={item.name || idx} className="flex items-center gap-2 text-xs text-[#6B7280]">
                         <span
                           className="w-2.5 h-2.5 rounded-full"
                           style={{ backgroundColor: item.color || ["#0D631B", "#4ADE80", "#1A1A2E", "#3B82F6"][idx % 4] }}
                         />
-                        {item.name} ({item.value}%)
+                        {item.name} ({item.percentage.toFixed(1)}%)
                       </div>
                     ))}
                   </div>
