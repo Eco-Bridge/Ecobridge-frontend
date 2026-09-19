@@ -17,7 +17,7 @@ const BENEFITS = [
   },
 ];
 
-export default function BrandPanel() {
+export default function BrandPanel({ illustration }) {
   return (
     <div className="w-full md:w-[38%] bg-[#0D631B] text-white p-8 md:p-10 flex flex-col justify-between">
     
@@ -49,7 +49,14 @@ export default function BrandPanel() {
         </ul>
       </div>
 
-      <img src={SignupIllustration} alt="People sorting recyclables in Lagos" className="rounded-xl w-full h-56 object-cover" />
+      {illustration ? (
+          <img src={SignupIllustration} alt="People sorting recyclables in Lagos" className="rounded-xl w-full h-56 object-cover" />
+      ) : (
+          <div className="hidden md:flex h-32 rounded-xl bg-white/10 border border-dashed border-white/30 items-center justify-center text-xs text-white/60">
+          Swap in your illustration asset here
+          </div>
+      )}
+      
 
     </div>
   );

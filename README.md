@@ -1,72 +1,121 @@
-# Getting Started with Create React App
+# 🌿 EcoBridge
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**Turning everyday waste into real rewards for Lagos.**
 
-## Available Scripts
+EcoBridge is a recycling rewards platform that connects Lagos residents, waste collection centers, and sustainable brands — letting people earn points for the plastic, paper, metal, and glass they recycle, and redeem those points for airtime, vouchers, and other everyday essentials.
 
-In the project directory, you can run:
+Built for **Hackathon 2026**, under the **SDG 13: Climate Action** track.
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🚩 The Problem
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Waste management in Lagos is a daily, visible challenge — but very little incentive exists for ordinary people to sort and recycle their own waste. EcoBridge turns recycling into something rewarding rather than thankless, giving individuals, schools, and businesses a reason to participate in a cleaner, greener city.
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## ✨ Features
 
-### `npm run build`
+### For Users
+- **Landing page & waitlist** — public-facing marketing site explaining how EcoBridge works
+- **Authentication** — signup, login, forgot/reset password (with OTP flow)
+- **Dashboard** — points balance, recent recycling activity, quick actions
+- **Rewards Catalog** — browse and redeem points for airtime, vouchers, and discounts, with category filtering
+- **Redemption flows** — airtime redemptions confirm via a lightweight toast notification; voucher redemptions generate a real, scannable QR code and a downloadable coupon image
+- **Recycling & Reward History** — searchable, filterable records of past activity, with a transaction details view
+- **Notifications** — grouped by date, filterable by type, with read/unread state
+- **Profile management** — edit profile details, change password with live strength validation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### For Admins
+- **Admin portal** — separate login and dashboard for staff, distinct from the user-facing app
+- **Record Waste** — a guided flow for staff to look up a user, log a collection, and award points, with live point calculation
+- **Manage Users** — searchable, filterable, paginated user directory with individual user detail pages
+- **Manage Rewards** — reward inventory with stock levels and status
+- **Analytics** — waste collection trends, user growth, top recyclers, and collection center performance
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🛠️ Tech Stack
 
-### `npm run eject`
+- **Frontend:** React (Create React App), React Router, Tailwind CSS
+- **Icons:** lucide-react
+- **Charts:** Recharts
+- **QR codes:** qrcode.react
+- **Image export:** html-to-image (used to generate downloadable coupon images)
+- **Backend:** Node.js *(in progress — see note below)*
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+> **Note on backend status:** This repository currently contains the full frontend experience. Forms, redemption flows, and admin actions are wired up and functional in the browser, but several are marked with `// TODO` comments pointing to where a real Node.js API call will eventually replace mock data, `setTimeout` simulations, or `console.log` submissions. This is intentional — it means every screen is fully clickable and demoable today, while backend integration is a clearly scoped next step.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 🚀 Getting Started
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Prerequisites
+- [Node.js](https://nodejs.org/) (LTS version recommended)
+- npm (comes with Node.js)
 
-## Learn More
+### Installation
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+# Clone the repository
+git clone https://github.com/YOUR-ORG/ecobridge-frontend.git
+cd ecobridge-frontend
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Install dependencies
+npm install
 
-### Code Splitting
+# Start the development server
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The app will open at `http://localhost:3000`.
 
-### Analyzing the Bundle Size
+### Available Scripts
+| Command | Description |
+|---|---|
+| `npm start` | Runs the app in development mode |
+| `npm run build` | Builds the app for production |
+| `npm test` | Runs the test suite |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
+## 📁 Project Structure
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```
+src/
+├── assets/            # Images and illustrations
+├── components/        # Reusable UI pieces (Navbar, Footer, Sidebar, modals, etc.)
+├── data/              # Mock/seed data used ahead of backend integration
+├── layouts/           # Page shells shared across groups of pages (e.g. DashboardLayout, AdminLayout)
+├── pages/             # Full screens, one per route
+│   └── admin/         # Admin-only pages (Dashboard, Record Waste, Manage Users, etc.)
+├── utils/             # Small shared helper functions
+├── App.js             # Route definitions
+└── index.js           # App entry point
+```
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 👥 Team
 
-### Deployment
+| Name | Role |
+|---|---|
+| Oyewopo Hameedat | Team Lead, Full-Stack Developer |
+| Rahmat Opoola | Frontend/Backend Developer |
+| Azeezah Yusuf | Product Manager |
+| Yusroh Olasupo | Frontend Developer |
+| Galbah Bamgbopa | Researcher |
+| Abdulkareem Nafisah | UI/UX Designer |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+---
 
-### `npm run build` fails to minify
+## 🏆 Hackathon
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-"# Ecobridge-frontend" 
+**Hackathon 2026** (SDG 13: Climate Action track).
+
+---
+
+## 📄 License
+
+This project was built for hackathon submission purposes.-frontend" 
 "# Ecobridge-frontend" 
