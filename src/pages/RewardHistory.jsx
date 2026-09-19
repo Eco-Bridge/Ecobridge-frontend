@@ -85,7 +85,21 @@ export default function RewardHistory() {
       <p className="text-sm text-[#6B7280]">Track all your redeemed rewards and voucher codes.</p>
       {error && <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">{error}</div>}
       <div className="mt-6 grid sm:grid-cols-3 gap-4">
-        {stats.map((stat) => { const Icon = stat.icon; return <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs"><div className="flex items-center gap-2 text-xs text-[#6B7280]"><Icon className="w-4 h-4 text-[#0D631B]" />{stat.label}</div><p className="mt-2 text-xl font-bold text-[#1A1A2E]">{stat.value}</p></div>; })}
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                  <Icon className="w-4 h-4 text-[#0D631B]" />
+                  {stat.label}
+                </div>
+                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-300" />}
+              </div>
+              <p className="mt-2 text-xl font-bold text-[#1A1A2E]">{loading ? "–" : stat.value}</p>
+            </div>
+          );
+        })}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="relative max-w-md flex-1 min-w-[240px]"><Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rewards or voucher codes..." className="w-full rounded-lg border border-[#E5E7EB] pl-9 pr-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]" /></div>

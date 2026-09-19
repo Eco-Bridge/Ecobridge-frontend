@@ -11,6 +11,9 @@ import {
   MapPinned,
   Loader2,
   AlertCircle,
+  X,
+  CheckCircle2,
+  Ban,
 } from "lucide-react";
 import AdminLayout from "../../layouts/AdminLayout";
 import { wasteService, rewardsService, userService } from "../../services";
@@ -37,6 +40,18 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    role: "USER"
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [modalError, setModalError] = useState("");
+
   useEffect(() => {
     let isMounted = true;
 
@@ -59,21 +74,25 @@ export default function UserDetail() {
 
           if (records.length > 0) {
             const firstRecord = records[0];
-            // Build user object from the first record's citizen info
             const citizenInfo = firstRecord.citizen ?? firstRecord.user ?? {};
-            foundUser = {
-              id: citizenInfo.id ?? citizenInfo._id ?? userId,
-              name: citizenInfo.name ?? citizenInfo.fullName ?? "Unknown User",
-              email: citizenInfo.email ?? "",
-              phone: citizenInfo.phone ?? citizenInfo.phoneNumber ?? "N/A",
-              role: citizenInfo.role ?? "USER",
-              points: citizenInfo.points ?? citizenInfo.pointsBalance ?? 0,
-              totalRecycled: records.reduce((sum, r) => sum + (parseFloat(r.weightKg) || 0), 0).toFixed(1),
-              centerVisits: records.length,
-              joined: citizenInfo.createdAt
-                ? new Date(citizenInfo.createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
-                : "2025",
-            };
+            if (!foundUser) {
+              foundUser = {
+                id: citizenInfo.id ?? citizenInfo._id ?? userId,
+                name: citizenInfo.name ?? citizenInfo.fullName ?? "Unknown User",
+                email: citizenInfo.email ?? "",
+                phone: citizenInfo.phone ?? citizenInfo.phoneNumber ?? "N/A",
+                role: citizenInfo.role ?? "USER",
+                points: citizenInfo.points ?? citizenInfo.pointsBalance ?? 0,
+                totalRecycled: records.reduce((sum, r) => sum + (parseFloat(r.weightKg) || 0), 0).toFixed(1),
+                centerVisits: records.length,
+                joined: citizenInfo.createdAt
+                  ? new Date(citizenInfo.createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+                  : "2025",
+              };
+            } else {
+              foundUser.centerVisits = records.length;
+              foundUser.totalRecycled = foundUser.totalRecycled || records.reduce((sum, r) => sum + (parseFloat(r.weightKg) || 0), 0).toFixed(1);
+            }
 
             wasteHistory = records.map((r) => ({
               date: r.createdAt
@@ -128,6 +147,16 @@ export default function UserDetail() {
           }
         }
 
+        if (foundUser) {
+          foundUser = {
+            ...foundUser,
+            joined: foundUser.createdAt
+              ? new Date(foundUser.createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+              : (foundUser.joined || "Oct 2025"),
+            centerVisits: foundUser.centerVisits ?? wasteHistory.length,
+          };
+        }
+
         if (!foundUser && wasteHistory.length === 0 && rewardsList.length === 0) {
           setError("No live user data is available for this profile yet.");
         }
@@ -155,6 +184,72 @@ export default function UserDetail() {
       isMounted = false;
     };
   }, [userId]);
+
+  const handleOpenEdit = () => {
+    if (!user) return;
+    setModalError("");
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone === "n/a" ? "" : (user.phone || ""),
+      address: user.address || "",
+      role: user.role || "USER",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!user || isSaving) return;
+    setIsSaving(true);
+    setModalError("");
+
+    try {
+      const payload = {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() || undefined,
+        address: editForm.address.trim() || undefined,
+        role: editForm.role,
+      };
+
+      await userService.updateUser(user.id, payload);
+
+      setUser((prev) => ({
+        ...prev,
+        name: editForm.name.trim() || prev.name,
+        email: editForm.email.trim() || prev.email,
+        phone: editForm.phone.trim() || prev.phone,
+        address: editForm.address.trim() || prev.address,
+        role: editForm.role,
+      }));
+
+      setShowEditModal(false);
+    } catch (err) {
+      setModalError(err?.data?.message || err?.message || "Failed to update profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!user || isUpdatingStatus) return;
+    const nextStatus = user.status === "Active" ? "Disabled" : "Active";
+    setIsUpdatingStatus(true);
+    try {
+      await userService.updateUserStatus(user.id, nextStatus);
+      setUser((prev) => ({
+        ...prev,
+        status: nextStatus,
+        isActive: nextStatus === "Active",
+        isFlagged: nextStatus === "Disabled",
+      }));
+    } catch (err) {
+      alert("Failed to update status: " + (err?.data?.message || err?.message || "Server error"));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -215,11 +310,31 @@ export default function UserDetail() {
       )}
 
       <div className="mt-4 flex items-center justify-end gap-2 font-sans">
-        <button className="text-sm border border-[#E5E7EB] text-[#374151] px-4 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+        <button
+          type="button"
+          onClick={handleOpenEdit}
+          className="text-sm border border-[#E5E7EB] text-[#374151] px-4 py-2 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-1.5"
+        >
           Edit Citizen Profile
         </button>
-        <button className="text-sm border border-[#FECACA] text-[#DC2626] px-4 py-2 rounded-lg hover:bg-red-50 cursor-pointer">
-          Disable Account
+        <button
+          type="button"
+          disabled={isUpdatingStatus}
+          onClick={handleToggleStatus}
+          className={`text-sm border px-4 py-2 rounded-lg cursor-pointer flex items-center gap-1.5 disabled:opacity-50 ${
+            user.status === "Active"
+              ? "border-[#FECACA] text-[#DC2626] hover:bg-red-50"
+              : "border-[#BBF7D0] text-[#16A34A] hover:bg-green-50"
+          }`}
+        >
+          {isUpdatingStatus ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : user.status === "Active" ? (
+            <Ban className="w-4 h-4" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4" />
+          )}
+          {user.status === "Active" ? "Disable Account" : "Activate Account"}
         </button>
       </div>
 
@@ -366,6 +481,115 @@ export default function UserDetail() {
           )}
         </div>
       </div>
+
+      {/* Edit Citizen Profile Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 font-sans">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+              <div>
+                <h2 className="text-base font-bold text-[#1A1A2E]">Edit Citizen Profile</h2>
+                <p className="text-xs text-[#6B7280]">Update user personal details and role</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                disabled={isSaving}
+                className="text-[#6B7280] hover:text-[#1A1A2E] p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {modalError && (
+              <div className="mt-3 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                {modalError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="080..."
+                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#374151] mb-1">Role</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B] bg-white"
+                  >
+                    <option value="USER">Citizen / User</option>
+                    <option value="COLLECTOR">Collector</option>
+                    <option value="RECYCLING_COMPANY">Recycler</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#374151] mb-1">Address</label>
+                <input
+                  type="text"
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  placeholder="Street or Area in Lagos"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={isSaving}
+                  className="px-4 py-2 border border-[#E5E7EB] rounded-lg text-sm text-[#6B7280] hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-[#0D631B] hover:bg-[#0a4f15] text-white rounded-lg text-sm font-medium flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

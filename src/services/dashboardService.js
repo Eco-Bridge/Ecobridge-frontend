@@ -112,9 +112,27 @@ export function normalizeAdminDashboardPayload(payload) {
       }))
     : [];
 
+  const userGrowth = pickFirstDefined(
+    source.userGrowth,
+    overview.userGrowth,
+    source.monthlyUsers,
+    overview.monthlyUsers,
+    []
+  );
+
+  const normalizedUserGrowth = Array.isArray(userGrowth)
+    ? userGrowth.map((item, index) => ({
+        month: item.month || item.label || item.name || item.monthKey || `M${index + 1}`,
+        users: Number(item.users ?? item.count ?? item.total ?? item.value ?? 0),
+        count: Number(item.count ?? item.users ?? item.total ?? item.value ?? 0),
+        monthKey: item.monthKey || '',
+      }))
+    : [];
+
   const normalizedBreakdown = Array.isArray(wasteCategoryBreakdown)
     ? wasteCategoryBreakdown.map((item, index) => ({
         name: item.name || item.wasteType || item.category || item.label || `Category ${index + 1}`,
+        category: item.category || item.name || item.wasteType || item.label || `Category ${index + 1}`,
         value: Number(item.value ?? item.totalWeightKg ?? item.weightKg ?? item.percent ?? item.count ?? 0),
         color: item.color || ['#0D631B', '#4ADE80', '#1A1A2E', '#3B82F6'][index % 4],
       }))
@@ -136,15 +154,16 @@ export function normalizeAdminDashboardPayload(payload) {
     ...overview,
     usersByRole,
     totalUsers: pickFirstDefined(
+      citizenCount > 0 ? citizenCount : undefined,
       overview.totalUsers,
       source.totalUsers,
       overview.totalCitizens,
       source.totalCitizens,
-      citizenCount > 0 ? citizenCount : 0,
       0
     ),
     wasteCategoryBreakdown: normalizedBreakdown,
     monthlyWaste: normalizedMonthlyWaste,
+    userGrowth: normalizedUserGrowth,
     environmentalImpact: pickFirstDefined(source.environmentalImpact, overview.environmentalImpact, {}),
     recentCollections: normalizedRecentCollections,
     topLagosRecyclers: pickFirstDefined(source.topLagosRecyclers, overview.topLagosRecyclers, []),

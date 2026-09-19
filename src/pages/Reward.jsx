@@ -13,7 +13,6 @@ import { toNumber } from "../utils/formatters";
 import MTN500 from "../assets/rewards/MTN 500.svg";
 import Airtel200 from "../assets/rewards/Airtel200.svg";
 import Shoprite from "../assets/rewards/Shoprite.svg";
-import MTN100 from "../assets/rewards/MTN 100.svg";
 import Discount from "../assets/rewards/Discount.svg";
 
 const CATEGORIES = ["All Rewards", "Airtime", "Vouchers", "Discounts"];
@@ -77,7 +76,7 @@ export default function Rewards() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [availablePoints]);
 
   useEffect(() => {
     setRewardsList((currentRewards) =>
@@ -200,11 +199,10 @@ export default function Rewards() {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`text-sm px-4 py-2 rounded-full transition-colors cursor-pointer ${
-              activeCategory === cat
+            className={`text-sm px-4 py-2 rounded-full transition-colors cursor-pointer ${activeCategory === cat
                 ? "bg-[#0D631B] text-white font-medium"
                 : "bg-white border border-[#E5E7EB] text-[#374151] hover:bg-gray-50"
-            }`}
+              }`}
           >
             {cat}
           </button>
@@ -219,71 +217,79 @@ export default function Rewards() {
         </div>
       ) : (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {visibleRewards.map((reward) => (
-            <div
-              key={reward.id || reward.name}
-              className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs flex flex-col hover:shadow-sm transition-shadow"
-            >
-              {/* Top half: Image & Locked Overlays */}
-              <div className="relative h-32 w-full bg-slate-50 flex items-center justify-center overflow-hidden">
-                {reward.image ? (
-                  <img
-                    src={reward.image}
-                    alt={reward.name}
-                    className={`w-full h-full object-cover transition-opacity ${
-                      reward.locked ? "opacity-30" : "opacity-100"
-                    }`}
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-emerald-800">{reward.badge || reward.name[0]}</span>
-                )}
-                
-                {/* Locked State Styling */}
-                {reward.locked && (
-                  <>
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10">
-                      <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md">
-                        <Lock className="w-4 h-4 text-gray-400" />
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100 text-[11px] font-medium text-gray-500 whitespace-nowrap z-10">
-                      Need {reward.points - availablePoints} more points
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Bottom half: Details */}
-              <div className="p-4 pt-5 flex-1 flex flex-col justify-between">
-                <p className={`font-semibold text-[15px] ${reward.locked ? "text-gray-400" : "text-[#1A1A2E]"}`}>
-                  {reward.name}
-                </p>
-                
-                <div className="mt-4 flex items-center justify-between">
-                  <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                      reward.locked
-                        ? "bg-gray-50 text-gray-400"
-                        : "bg-[#E7F7EC] text-[#0D631B]"
-                    }`}
-                  >
-                    {reward.points} pts
-                  </span>
-
-                  {reward.locked ? (
-                    <span className="text-sm font-medium text-gray-400">Locked</span>
+          {visibleRewards.length === 0 ? (
+            <div className="col-span-full py-16 flex flex-col justify-center items-center text-center bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-xs">
+              <DollarSign className="w-10 h-10 text-slate-300 mb-2" />
+              <p className="text-base font-semibold text-[#1A1A2E]">No rewards available</p>
+              <p className="text-xs text-[#6B7280] mt-1 max-w-sm">
+                There are currently no rewards listed under the "{activeCategory}" category. Please check other categories or check back soon!
+              </p>
+            </div>
+          ) : (
+            visibleRewards.map((reward) => (
+              <div
+                key={reward.id || reward.name}
+                className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs flex flex-col hover:shadow-sm transition-shadow"
+              >
+                {/* Top half: Image & Locked Overlays */}
+                <div className="relative h-32 w-full bg-slate-50 flex items-center justify-center overflow-hidden">
+                  {reward.image ? (
+                    <img
+                      src={reward.image}
+                      alt={reward.name}
+                      className={`w-full h-full object-cover transition-opacity ${
+                        reward.locked ? "opacity-30" : "opacity-100"
+                      }`}
+                    />
                   ) : (
-                    <button
-                      onClick={() => openRedeem(reward)}
-                      className="text-sm font-semibold text-[#0D631B] hover:text-[#0a4f15] transition-colors cursor-pointer"
-                    >
-                      Redeem
-                    </button>
+                    <span className="text-2xl font-bold text-emerald-800">{reward.badge || reward.name[0]}</span>
+                  )}
+
+                  {/* Locked State Styling */}
+                  {reward.locked && (
+                    <>
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10">
+                        <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md">
+                          <Lock className="w-4 h-4 text-gray-400" />
+                        </div>
+                      </div>
+                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100 text-[11px] font-medium text-gray-500 whitespace-nowrap z-10">
+                        Need {reward.points - availablePoints} more points
+                      </div>
+                    </>
                   )}
                 </div>
+
+                {/* Bottom half: Details */}
+                <div className="p-4 pt-5 flex-1 flex flex-col justify-between">
+                  <p className={`font-semibold text-[15px] ${reward.locked ? "text-gray-400" : "text-[#1A1A2E]"}`}>
+                    {reward.name}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <span
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        reward.locked ? "bg-gray-50 text-gray-400" : "bg-[#E7F7EC] text-[#0D631B]"
+                      }`}
+                    >
+                      {reward.points} pts
+                    </span>
+
+                    {reward.locked ? (
+                      <span className="text-sm font-medium text-gray-400">Locked</span>
+                    ) : (
+                      <button
+                        onClick={() => openRedeem(reward)}
+                        className="text-sm font-semibold text-[#0D631B] hover:text-[#0a4f15] transition-colors cursor-pointer"
+                      >
+                        Redeem
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
@@ -317,7 +323,7 @@ export default function Rewards() {
           reward={activeReward}
           phone={redeemedPhone}
           onClose={closeToast}
-        />  
+        />
       )}
 
       {couponSaved && (
@@ -328,9 +334,9 @@ export default function Rewards() {
             setActiveReward(null);
           }}
           onViewReward={() => (window.location.href = "/reward-history")}
-        />  
+        />
       )}
-      
+
     </DashboardLayout>
   );
 }

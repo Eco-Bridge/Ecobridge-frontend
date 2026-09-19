@@ -8,9 +8,14 @@ function toNumber(value, fallback = 0) {
 }
 
 function getUserStatus(user = {}) {
-  const status = user.status || user.accountStatus || user.isActive;
-  if (status === false || status === 'disabled' || status === 'inactive' || status === 'banned') return 'Disabled';
-  if (status === true || status === 'active' || status === 'enabled') return 'Active';
+  if (user.isFlagged === true || user.isActive === false) return 'Disabled';
+  const status = user.status || user.accountStatus;
+  if (typeof status === 'string') {
+    const s = status.toLowerCase();
+    if (['disabled', 'inactive', 'banned', 'flagged'].includes(s)) return 'Disabled';
+    if (['active', 'enabled'].includes(s)) return 'Active';
+  }
+  if (user.isActive === true) return 'Active';
   return 'Active';
 }
 
@@ -23,7 +28,9 @@ function toUserRecord(item, index = 0) {
   const phone = raw.phone || raw.phoneNumber || raw.mobile || raw.phone_number || 'n/a';
   const points = toNumber(raw.points ?? raw.pointsBalance ?? raw.rewardPoints ?? raw.ecoPoints ?? raw.eco_points ?? 0, 0);
   const balance = toNumber(raw.balance ?? raw.walletBalance ?? raw.wallet_balance ?? raw.points ?? raw.pointsBalance ?? points, 0);
-  const joined = raw.createdAt || raw.created_at || raw.joinedAt || raw.joined || 'N/A';
+  const joined = raw.createdAt
+    ? new Date(raw.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+    : (raw.joined || raw.joinedAt || raw.created_at || 'N/A');
   const role = String(raw.role || raw.userRole || 'USER').toUpperCase();
 
   return {
@@ -39,6 +46,11 @@ function toUserRecord(item, index = 0) {
     status: getUserStatus(raw),
     joined,
     isActive: raw.isActive ?? raw.active ?? true,
+    isFlagged: raw.isFlagged ?? false,
+    address: raw.address || '',
+    totalRecycled: String(raw.totalWeightRecycledKg ?? raw.totalRecycled ?? 0),
+    totalPointsEarned: toNumber(raw.totalPointsEarned ?? raw.pointsEarned ?? points, 0),
+    createdAt: raw.createdAt,
   };
 }
 
@@ -86,6 +98,7 @@ export function normalizeUsersResponse(response) {
     totalUsers: Number(response?.totalUsers ?? response?.data?.totalUsers ?? 0),
     totalActiveAccounts: Number(response?.totalActiveAccounts ?? response?.data?.totalActiveAccounts ?? 0),
     totalFlaggedAccounts: Number(response?.totalFlaggedAccounts ?? response?.data?.totalFlaggedAccounts ?? 0),
+    userGrowth: response?.userGrowth ?? response?.data?.userGrowth ?? [],
   };
 }
 
@@ -99,6 +112,7 @@ export function normalizeUser(response) {
     if (response.data.user) return toUserRecord(response.data.user);
     if (response.data.citizen) return toUserRecord(response.data.citizen);
     if (Array.isArray(response.data)) return normalizeUsers(response.data)[0] || null;
+    return toUserRecord(response.data);
   }
 
   return toUserRecord(response);

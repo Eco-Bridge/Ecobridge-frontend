@@ -264,7 +264,7 @@ export default function Profile() {
                   className="text-sm bg-[#0D631B] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Changes
+                  {loading ? "Saving Changes..." : "Save Changes"}
                 </button>
               </div>
 
@@ -427,7 +427,7 @@ export default function Profile() {
                     className="text-sm bg-[#0D631B] text-white font-medium px-4 py-2.5 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    Update Password
+                    {loading ? "Updating Password..." : "Update Password"}
                   </button>
                 </form>
 

@@ -8,6 +8,8 @@ import {
   Megaphone,
   CheckCheck,
   Trash2,
+  Loader2,
+  Bell,
 } from "lucide-react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -132,14 +134,17 @@ export default function Notifications() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex items-center justify-between">
+            <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex items-center justify-between shadow-xs">
               <div>
                 <p className="text-xs text-[#6B7280]">{stat.label}</p>
-                <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{stat.value}</p>
+                <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{loading ? "–" : stat.value}</p>
               </div>
-              <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: stat.bg }}>
-                <Icon className="w-4 h-4" style={{ color: stat.color }} />
-              </span>
+              <div className="flex items-center gap-2">
+                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-300" />}
+                <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: stat.bg }}>
+                  <Icon className="w-4 h-4" style={{ color: stat.color }} />
+                </span>
+              </div>
             </div>
           );
         })}
@@ -148,44 +153,62 @@ export default function Notifications() {
       <div className="mt-6 grid md:grid-cols-[220px_1fr] gap-6">
         <div>
           <button onClick={() => setActiveFilter("All")} className={`w-full flex items-center justify-between text-sm px-4 py-2 rounded-lg mb-3 ${activeFilter === "All" ? "bg-[#0D631B] text-white" : "bg-white border border-[#E5E7EB] text-[#374151]"}`}>
-            All <span>{notifications.length}</span>
+            All <span>{loading ? "–" : notifications.length}</span>
           </button>
 
           <div className="bg-white border border-[#E5E7EB] rounded-lg overflow-hidden">
             {FILTERS.slice(1).map((filter) => (
               <button key={filter} onClick={() => setActiveFilter(filter)} className={`w-full flex items-center justify-between text-sm px-4 py-2.5 border-b border-[#F3F4F6] last:border-b-0 ${activeFilter === filter ? "text-[#0D631B] font-medium" : "text-[#374151]"} hover:bg-gray-50`}>
                 {filter}
-                {filter === "Unread" && <span className="text-xs bg-[#FEE2E2] text-[#DC2626] px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                {filter === "Unread" && <span className="text-xs bg-[#FEE2E2] text-[#DC2626] px-1.5 py-0.5 rounded-full">{loading ? "–" : unreadCount}</span>}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-6">
-          {loading ? <div className="py-16 flex flex-col justify-center items-center text-slate-400 gap-3"><Mail className="w-8 h-8 animate-spin text-[#0D631B]" /><p className="text-sm font-medium">Loading notifications...</p></div> : filtered.length === 0 ? <div className="bg-white border border-[#E5E7EB] rounded-xl p-8 text-center text-slate-400">No notifications available.</div> : <>
-            {filtered.map((item) => {
-              const style = TYPE_STYLES[item.type] || TYPE_STYLES.info;
-              const Icon = item.icon;
-              return (
-                <div key={item.id} className="rounded-xl p-4 border-l-4" style={{ borderLeftColor: style.border, backgroundColor: style.cardBg }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: style.iconBg }}><Icon className="w-4 h-4" style={{ color: style.iconColor }} /></span>
-                      <div>
-                        <p className="text-sm font-semibold text-[#1A1A2E]">{item.title}</p>
-                        <p className="mt-1 text-xs text-[#6B7280]">{item.body}</p>
+          {loading ? (
+            <div className="py-16 flex flex-col justify-center items-center text-slate-400 gap-3 bg-white border border-[#E5E7EB] rounded-2xl p-8">
+              <Loader2 className="w-8 h-8 animate-spin text-[#0D631B]" />
+              <p className="text-sm font-medium text-[#1A1A2E]">Loading notifications...</p>
+              <p className="text-xs text-[#6B7280]">Checking for new platform alerts and announcements</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-10 text-center text-slate-400 shadow-xs">
+              <Bell className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+              <p className="text-sm font-semibold text-[#1A1A2E]">No notifications found</p>
+              <p className="text-xs text-[#6B7280] mt-1">
+                {activeFilter === "All"
+                  ? "You are all caught up! There are no notifications at this time."
+                  : `There are currently no ${activeFilter.toLowerCase()} notifications.`}
+              </p>
+            </div>
+          ) : (
+            <>
+              {filtered.map((item) => {
+                const style = TYPE_STYLES[item.type] || TYPE_STYLES.info;
+                const Icon = item.icon;
+                return (
+                  <div key={item.id} className="rounded-xl p-4 border-l-4" style={{ borderLeftColor: style.border, backgroundColor: style.cardBg }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: style.iconBg }}><Icon className="w-4 h-4" style={{ color: style.iconColor }} /></span>
+                        <div>
+                          <p className="text-sm font-semibold text-[#1A1A2E]">{item.title}</p>
+                          <p className="mt-1 text-xs text-[#6B7280]">{item.body}</p>
+                        </div>
                       </div>
+                      <span className="text-xs text-[#9CA3AF] whitespace-nowrap">{item.time}</span>
                     </div>
-                    <span className="text-xs text-[#9CA3AF] whitespace-nowrap">{item.time}</span>
+
+                    {item.tip && <div className="mt-2 ml-11 text-xs text-[#DC2626] bg-white/60 rounded-lg px-3 py-2">{item.tip}</div>}
+
+                    {item.actions && item.actions.length > 0 && <div className="mt-3 ml-11 flex flex-wrap gap-2">{item.actions.map((action) => <a key={action.label} href={action.href} className={`text-xs font-medium px-3 py-1.5 rounded-lg ${action.style === "solid" ? "text-white" : "border"}`} style={action.style === "solid" ? { backgroundColor: style.border } : { borderColor: style.border, color: style.border }}>{action.label}</a>)}</div>}
                   </div>
-
-                  {item.tip && <div className="mt-2 ml-11 text-xs text-[#DC2626] bg-white/60 rounded-lg px-3 py-2">{item.tip}</div>}
-
-                  {item.actions && item.actions.length > 0 && <div className="mt-3 ml-11 flex flex-wrap gap-2">{item.actions.map((action) => <a key={action.label} href={action.href} className={`text-xs font-medium px-3 py-1.5 rounded-lg ${action.style === "solid" ? "text-white" : "border"}`} style={action.style === "solid" ? { backgroundColor: style.border } : { borderColor: style.border, color: style.border }}>{action.label}</a>)}</div>}
-                </div>
-              );
-            })}
-          </>}
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
     </Layout>

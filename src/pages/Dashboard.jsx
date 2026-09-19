@@ -58,10 +58,33 @@ export default function Dashboard() {
     };
   }, []);
 
-  const points = toNumber(dashboardData?.points ?? dashboardData?.pointsBalance ?? user?.points ?? 0);
-  const totalKg = toNumber(dashboardData?.totalRecycledKg ?? dashboardData?.kgRecycled ?? user?.totalRecycled ?? 0);
-  const visitCount = dashboardData?.centerVisits ?? dashboardData?.visitsCount ?? user?.centerVisits ?? 0;
-  const recentActivity = dashboardData?.recentHistory || dashboardData?.recentActivity || [];
+  // Backend returns: data.points.currentBalance, data.recyclingSummary.totalWeightKg, data.recentRecyclingHistory
+  const pointsField = dashboardData?.points;
+  const points = toNumber(
+    typeof pointsField === 'object'
+      ? (pointsField?.currentBalance ?? pointsField?.totalEarned)
+      : pointsField ?? dashboardData?.pointsBalance ?? user?.points ?? 0
+  );
+  const recyclingSummary = dashboardData?.recyclingSummary;
+  const totalKg = toNumber(
+    recyclingSummary?.totalWeightKg ??
+    dashboardData?.totalRecycledKg ??
+    dashboardData?.totalWeightRecycledKg ??
+    dashboardData?.kgRecycled ??
+    user?.totalRecycled ??
+    0
+  );
+  const visitCount =
+    recyclingSummary?.totalSubmissions ??
+    dashboardData?.centerVisits ??
+    dashboardData?.visitsCount ??
+    user?.centerVisits ??
+    0;
+  const recentActivity =
+    dashboardData?.recentRecyclingHistory ||
+    dashboardData?.recentHistory ||
+    dashboardData?.recentActivity ||
+    [];
 
   // Calculate environmental metrics
   const impact = dashboardData?.environmentalImpact || calculateEnvironmentalImpact(totalKg);
@@ -75,9 +98,14 @@ export default function Dashboard() {
   const ptsRemaining = Math.max(0, nextMilestone - points);
   const progressPct = Math.min(100, Math.round((points / nextMilestone) * 100));
 
+  const activeVouchersCount =
+    dashboardData?.activeVouchersCount ??
+    dashboardData?.vouchersCount ??
+    (Array.isArray(dashboardData?.activeVouchers) ? dashboardData.activeVouchers.length : 0);
+
   const stats = [
     { icon: Star, label: "Total Points", value: points.toLocaleString(), sub: `+${visitCount} visits recorded` },
-    { icon: Wallet, label: "Vouchers & Rewards", value: dashboardData?.activeVouchersCount ?? dashboardData?.vouchersCount ?? 0 },
+    { icon: Wallet, label: "Vouchers & Rewards", value: activeVouchersCount },
     { icon: Recycle, label: "Total Recycled", value: `${totalKg} kg` },
   ];
 
@@ -116,11 +144,14 @@ export default function Dashboard() {
               const Icon = stat.icon;
               return (
                 <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
-                  <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                    <Icon className="w-4 h-4 text-[#0D631B]" />
-                    {stat.label}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                      <Icon className="w-4 h-4 text-[#0D631B]" />
+                      {stat.label}
+                    </div>
+                    {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-300" />}
                   </div>
-                  <p className="mt-2 text-xl font-bold text-[#1A1A2E]">{stat.value}</p>
+                  <p className="mt-2 text-xl font-bold text-[#1A1A2E]">{loading ? "–" : stat.value}</p>
                   {stat.sub && <p className="text-xs text-[#27AE60] mt-0.5">{stat.sub}</p>}
                 </div>
               );
@@ -234,29 +265,35 @@ export default function Dashboard() {
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-xs">
             <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Featured Rewards</p>
             <div className="space-y-3">
-              {featuredRewards.map((r) => (
-                <Link
-                  key={r.id || r.title || r.name}
-                  to="/reward"
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: r.color || "#0D631B" }}
-                    >
-                      {r.badge || (r.title || r.name || "R")[0]}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-[#1A1A2E]">{r.title || r.name}</p>
-                      <p className="text-xs text-[#6B7280]">{r.pointsRequired || r.points} pts</p>
+              {loading ? (
+                <div className="py-6 flex justify-center items-center text-slate-400 gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#0D631B]" />
+                  <span className="text-xs">Loading featured rewards...</span>
+                </div>
+              ) : featuredRewards.length === 0 ? (
+                <p className="py-3 text-xs text-[#6B7280] text-center">No rewards available right now.</p>
+              ) : (
+                featuredRewards.map((r) => (
+                  <Link
+                    key={r.id || r.title || r.name}
+                    to="/reward"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                        style={{ backgroundColor: r.color || "#0D631B" }}
+                      >
+                        {r.badge || (r.title || r.name || "R")[0]}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-[#1A1A2E]">{r.title || r.name}</p>
+                        <p className="text-xs text-[#6B7280]">{r.pointsRequired || r.points} pts</p>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-[#6B7280] text-sm">›</span>
-                </Link>
-              ))}
-              {featuredRewards.length === 0 && (
-                <p className="py-3 text-xs text-[#6B7280]">No rewards available right now.</p>
+                    <span className="text-[#6B7280] text-sm">›</span>
+                  </Link>
+                ))
               )}
             </div>
           </div>

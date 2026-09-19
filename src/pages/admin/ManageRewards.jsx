@@ -62,9 +62,12 @@ export default function ManageRewards() {
   const [actionError, setActionError] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
     async function loadRewards() {
+      setLoading(true);
       try {
         const data = await rewardsService.getRewards(search ? { search } : {});
+        if (!isMounted) return;
         const list = Array.isArray(data.rewards) ? data.rewards : [];
         setSummary({
           totalRewardsGivenOut: data.totalRewardsGivenOut,
@@ -74,13 +77,17 @@ export default function ManageRewards() {
         const formatted = list.map(formatReward);
         setRewards(formatted);
       } catch (err) {
+        if (!isMounted) return;
         setRewards([]);
         setSummary({ totalRewardsGivenOut: 0, activeCatalog: 0, redeemedThis: 0 });
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
     loadRewards();
+    return () => {
+      isMounted = false;
+    };
   }, [search]);
 
   const handleCreateReward = async (e) => {
@@ -219,7 +226,10 @@ export default function ManageRewards() {
             <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex items-center justify-between shadow-xs">
               <div>
                 <p className="text-xs text-[#6B7280] font-medium">{stat.label}</p>
-                <p className="mt-1 text-xl font-bold text-[#1A1A2E]">{stat.value}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xl font-bold text-[#1A1A2E]">{loading ? "–" : stat.value}</p>
+                  {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-300" />}
+                </div>
               </div>
               <span
                 className="w-9 h-9 rounded-full flex items-center justify-center"
@@ -244,9 +254,18 @@ export default function ManageRewards() {
       </div>
 
       {loading ? (
-        <div className="py-16 flex flex-col justify-center items-center text-slate-400 gap-3">
+        <div className="mt-6 py-20 flex flex-col justify-center items-center text-slate-400 gap-3 bg-white rounded-2xl border border-[#E5E7EB]">
           <Loader2 className="w-8 h-8 animate-spin text-[#0D631B]" />
-          <p className="text-sm font-medium">Loading rewards inventory...</p>
+          <p className="text-sm font-medium text-[#1A1A2E]">Loading rewards inventory...</p>
+          <p className="text-xs text-[#6B7280]">Fetching available rewards from the database</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="mt-6 py-16 flex flex-col justify-center items-center text-slate-400 gap-2 bg-white rounded-2xl border border-[#E5E7EB] p-6 text-center">
+          <Gift className="w-8 h-8 text-slate-300" />
+          <p className="text-sm font-semibold text-[#1A1A2E]">No rewards found</p>
+          <p className="text-xs text-[#6B7280]">
+            {search ? "No reward matches your search term." : "Your rewards catalog is currently empty."}
+          </p>
         </div>
       ) : (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 font-sans">

@@ -60,6 +60,7 @@ export default function RecordWaste() {
   const [result, setResult] = useState(null);
   const [rates, setRates] = useState(DEFAULT_RATES);
   const [loading, setLoading] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const [error, setError] = useState("");
   const [matches, setMatches] = useState([]);
 
@@ -78,14 +79,18 @@ export default function RecordWaste() {
     async function searchUsers() {
       if (!query.trim()) {
         setMatches([]);
+        setSearchingUsers(false);
         return;
       }
 
+      setSearchingUsers(true);
       try {
         const users = await userService.searchUsers(query);
         if (isMounted) setMatches(users || []);
       } catch (err) {
         if (isMounted) setMatches([]);
+      } finally {
+        if (isMounted) setSearchingUsers(false);
       }
     }
 
@@ -320,7 +325,21 @@ export default function RecordWaste() {
               />
             </div>
 
+            {!selectedUser && searchingUsers && (
+              <div className="mt-3 py-3 flex items-center justify-center gap-2 text-xs text-[#6B7280]">
+                <Loader2 className="w-4 h-4 animate-spin text-[#0D631B]" />
+                <span>Searching citizen accounts...</span>
+              </div>
+            )}
+
+            {!selectedUser && !searchingUsers && query.trim().length > 1 && matches.length === 0 && (
+              <div className="mt-2 py-3 px-3 text-center text-xs text-[#6B7280] bg-gray-50 border border-[#E5E7EB] rounded-xl">
+                No matching citizen accounts found for "{query}".
+              </div>
+            )}
+
             {!selectedUser &&
+              !searchingUsers &&
               matches.map((u) => (
                 <button
                   type="button"
