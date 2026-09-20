@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Calendar, Scale, Star, Search, Download, CheckCircle2, Loader2, Filter } from "lucide-react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { wasteService } from "../services";
-import { useAuth } from "../context/AuthContext";
 import { toNumber } from "../utils/formatters";
 
 const WASTE_TYPE_STYLES = {
@@ -123,14 +122,11 @@ export default function RecycleHistory() {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                  <Icon className="w-4 h-4 text-[#0D631B]" />
-                  {stat.label}
-                </div>
-                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-300" />}
+              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                <Icon className="w-4 h-4 text-[#0D631B]" />
+                {stat.label}
               </div>
-              <p className="mt-2 text-xl font-bold text-[#1A1A2E]">{loading ? "–" : stat.value}</p>
+              <p className="mt-2 text-xl font-bold text-[#1A1A2E]">{stat.value}</p>
             </div>
           );
         })}
