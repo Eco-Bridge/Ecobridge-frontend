@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,6 +11,9 @@ const LINKS = [
 
 export default function TopNavBar() {
   const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+
+  const isStaff = ['ADMIN', 'COLLECTOR', 'RECYCLING_COMPANY'].includes((user?.role || '').toUpperCase());
 
   return (
     <header className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-[#E5E7EB]">
