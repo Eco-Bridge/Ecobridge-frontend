@@ -1,12 +1,12 @@
+import apiClient from './apiClient';
+import userService from './userService';
+
 jest.mock('./apiClient', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),
   },
 }));
-
-import apiClient from './apiClient';
-import userService from './userService';
 
 describe('userService', () => {
   beforeEach(() => {

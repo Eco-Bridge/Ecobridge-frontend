@@ -12,7 +12,6 @@ const DEFAULT_LINKS = [
 ];
 
 export default function Sidebar({ 
-  userName = "Hameeda Oyewopo", 
   links = DEFAULT_LINKS, 
   profilePath = "/profile",
   mobileOpen,
@@ -46,17 +45,17 @@ export default function Sidebar({
         border-r border-[#E5E7EB]
         flex flex-col justify-between
         transition-all duration-200
-        fixed md:relative
+        fixed md:sticky
         top-0 left-0
-        h-full md:h-auto
-        z-50
+        h-screen
+        z-50 md:z-20
         w-56
         md:${collapsed ? "w-16" : "w-56"}
         ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}
     >
-      <div>
-        <div className="px-4 py-5 border-b border-[#E5E7EB] flex items-center justify-between">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="px-4 py-5 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
           {!collapsed && <Logo />}
           <button
             onClick={() => {
@@ -86,7 +85,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <nav className="mt-4 px-3 space-y-1">
+        <nav className="mt-4 px-3 space-y-1 overflow-y-auto flex-1">
           {links.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.path;
@@ -114,25 +113,37 @@ export default function Sidebar({
         </nav>
       </div>
 
-      <div className="px-4 py-4 border-t border-[#E5E7EB] flex items-center gap-2">
-        <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center shrink-0">
-          {initials}
-        </span>
+      <div className="px-4 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-2 shrink-0 bg-white">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center shrink-0">
+            {initials}
+          </span>
 
-        <div className={`${collapsed ? "md:hidden" : ""}`}>
-          <p className="text-sm font-medium text-[#1A1A2E]">
-            {userName}
-          </p>
+          <div className={`${collapsed ? "md:hidden" : ""} min-w-0`}>
+            <p className="text-sm font-medium text-[#1A1A2E] truncate">
+              {userName}
+            </p>
 
-          <a
-            href={profilePath}
-            onClick={() => setMobileOpen(false)}
-            className="text-xs text-[#6B7280] hover:text-[#0D631B]"
-          >
-            View Profile
-          </a>
+            <Link
+              to={profilePath}
+              onClick={() => setMobileOpen(false)}
+              className="text-xs text-[#6B7280] hover:text-[#0D631B]"
+            >
+              View Profile
+            </Link>
+          </div>
         </div>
-    </div>
+
+        <button
+          onClick={logout}
+          title="Logout"
+          className={`text-[#6B7280] hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 cursor-pointer transition-colors shrink-0 ${
+            collapsed ? "md:hidden" : ""
+          }`}
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
     </aside>
   </>
   );

@@ -1,6 +1,7 @@
 import { useLocation, Link } from "react-router-dom";
 import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
 
 const LINKS = [
   { label: "Home", path: "/" },
@@ -10,6 +11,7 @@ const LINKS = [
 ];
 
 export default function TopNavBar() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
 

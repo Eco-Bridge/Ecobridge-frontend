@@ -21,8 +21,8 @@ export default function AdminLayout({ children }) {
     <div className="min-h-screen bg-[#F8F7FB] flex">
       <Sidebar links={ADMIN_LINKS} userName="John Doe" profilePath="/admin/profile" />
 
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white border-b border-[#E5E7EB] px-6 py-3 flex items-center justify-end gap-4">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="bg-white border-b border-[#E5E7EB] px-6 py-3 flex items-center justify-between gap-4">
          <div className="flex items-center gap-2">
             <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#EFECFF] text-[#4338CA]">
               🛡️ {userRole} CONSOLE
