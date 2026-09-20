@@ -10,7 +10,13 @@ const DEFAULT_LINKS = [
   { label: "Reward History", path: "/reward-history", icon: Clock },
 ];
 
-export default function Sidebar({ userName = "Hameeda Oyewopo", links = DEFAULT_LINKS, profilePath = "/profile" }) {
+export default function Sidebar({ 
+  userName = "Hameeda Oyewopo", 
+  links = DEFAULT_LINKS, 
+  profilePath = "/profile",
+  mobileOpen,
+  setMobileOpen,
+  }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const initials = userName
@@ -20,20 +26,58 @@ export default function Sidebar({ userName = "Hameeda Oyewopo", links = DEFAULT_
     .slice(0, 2);
 
   return (
+  <>
+    {mobileOpen && (
+      <div
+        className="fixed inset-0 bg-black/40 z-40 md:hidden"
+        onClick={() => setMobileOpen(false)}
+      />
+    )}
+
     <aside
-      className={`shrink-0 bg-white border-r border-[#E5E7EB] flex flex-col justify-between transition-all duration-200 ${
-        collapsed ? "w-16" : "w-56"
-      }`}
+      className={`
+        shrink-0
+        bg-white
+        border-r border-[#E5E7EB]
+        flex flex-col justify-between
+        transition-all duration-200
+        fixed md:relative
+        top-0 left-0
+        h-full md:h-auto
+        z-50
+        w-56
+        md:${collapsed ? "w-16" : "w-56"}
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}
     >
       <div>
         <div className="px-4 py-5 border-b border-[#E5E7EB] flex items-center justify-between">
           {!collapsed && <Logo />}
           <button
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => {
+              if (mobileOpen) {
+                setMobileOpen(false);
+              } else {
+                setCollapsed((c) => !c);
+              }
+            }}
+            aria-label={
+              mobileOpen
+                ? "Close sidebar"
+                : collapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+            }
             className="w-8 h-8 rounded-lg bg-[#E7F7EC] text-[#0D631B] flex items-center justify-center shrink-0 hover:bg-[#d9f0dd]"
           >
-            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          
+            {mobileOpen ? (
+                <PanelLeftClose className="w-4 h-4" />
+              ) : collapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
           </button>
         </div>
 
@@ -47,7 +91,7 @@ export default function Sidebar({ userName = "Hameeda Oyewopo", links = DEFAULT_
                 href={link.path}
                 title={collapsed ? link.label : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${
-                  collapsed ? "justify-center" : ""
+                  collapsed ? "md:justify-center" : ""
                 } ${
                   isActive
                     ? "bg-[#E7F7EC] text-[#0D631B] font-medium"
@@ -55,30 +99,36 @@ export default function Sidebar({ userName = "Hameeda Oyewopo", links = DEFAULT_
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                {!collapsed && link.label}
+                <span className={collapsed ? "md:hidden" : ""}>
+                    {link.label}
+                  </span>
+
               </a>
             );
           })}
         </nav>
       </div>
 
-      <div
-        className={`px-4 py-4 border-t border-[#E5E7EB] flex items-center gap-2 ${
-          collapsed ? "justify-center" : ""
-        }`}
-      >
+      <div className="px-4 py-4 border-t border-[#E5E7EB] flex items-center gap-2">
         <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center shrink-0">
           {initials}
         </span>
-        {!collapsed && (
-          <div>
-            <p className="text-sm font-medium text-[#1A1A2E]">{userName}</p>
-            <a href={profilePath} className="text-xs text-[#6B7280] hover:text-[#0D631B]">
-              View Profile
-            </a>
-          </div>
-        )}
-      </div>
+
+        <div className={`${collapsed ? "md:hidden" : ""}`}>
+          <p className="text-sm font-medium text-[#1A1A2E]">
+            {userName}
+          </p>
+
+          <a
+            href={profilePath}
+            onClick={() => setMobileOpen(false)}
+            className="text-xs text-[#6B7280] hover:text-[#0D631B]"
+          >
+            View Profile
+          </a>
+        </div>
+    </div>
     </aside>
+  </>
   );
 }
