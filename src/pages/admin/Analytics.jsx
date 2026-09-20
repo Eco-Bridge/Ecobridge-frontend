@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   UserPlus,
   Recycle,
@@ -5,8 +6,7 @@ import {
   Wallet,
   Download,
   Trophy,
-  TrendingUp,
-  TrendingDown,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -21,113 +21,299 @@ import {
   Pie,
 } from "recharts";
 import AdminLayout from "../../layouts/AdminLayout";
+import { dashboardService, rewardsService, userService } from "../../services";
 
-const STATS = [
-  { icon: UserPlus, label: "New Users", value: "152", change: "+12%", up: true, color: "#3B82F6", bg: "#DBEAFE" },
-  { icon: Recycle, label: "Waste Collected", value: "820kg", change: "+8%", up: true, color: "#0D631B", bg: "#E7F7EC" },
-  { icon: Coins, label: "Points Distributed", value: "41,000", change: "-2%", up: false, color: "#7C3AED", bg: "#EFECFF" },
-  { icon: Wallet, label: "Est. Revenue", value: "₦80k", change: "+5%", up: true, color: "#B45309", bg: "#FEF3C7" },
-];
-
-const MONTHLY_WASTE = [
-  { month: "Jan", kg: 320 },
-  { month: "Feb", kg: 380 },
-  { month: "Mar", kg: 290 },
-  { month: "Apr", kg: 420 },
-  { month: "May", kg: 480 },
-  { month: "Jun", kg: 510 },
-  { month: "Jul", kg: 560 },
-  { month: "Aug", kg: 600 },
-  { month: "Sep", kg: 640 },
-  { month: "Oct", kg: 680 },
-  { month: "Nov", kg: 720 },
-  { month: "Dec", kg: 820 },
-];
-
-const USER_GROWTH = [
-  { month: "Jan", users: 40 },
-  { month: "Feb", users: 55 },
-  { month: "Mar", users: 60 },
-  { month: "Apr", users: 75 },
-  { month: "May", users: 85 },
-  { month: "Jun", users: 95 },
-  { month: "Jul", users: 105 },
-  { month: "Aug", users: 115 },
-  { month: "Sep", users: 125 },
-  { month: "Oct", users: 135 },
-  { month: "Nov", users: 145 },
-  { month: "Dec", users: 152 },
-];
-
-const WASTE_BY_TYPE = [
-  { name: "Plastic", value: 40, color: "#3B82F6" },
-  { name: "Paper", value: 25, color: "#F59E0B" },
-  { name: "Metal", value: 20, color: "#9CA3AF" },
-  { name: "Glass", value: 10, color: "#06B6D4" },
-  { name: "Electronics", value: 5, color: "#7C3AED" },
-];
-
-const MOST_REDEEMED = [
-  { name: "MTN N500", count: 145 },
-  { name: "Airtel N200", count: 98 },
-  { name: "Shoprite N1000", count: 67 },
-  { name: "MTN N100", count: 52 },
-  { name: "Discount", count: 25 },
-];
-
-const COLLECTION_CENTERS = [
-  { name: "Ikeja", pct: 85 },
-  { name: "Lekki", pct: 60 },
-  { name: "Surulere", pct: 53 },
-  { name: "Yaba", pct: 40 },
-  { name: "Ajah", pct: 34 },
-];
-
-const RANK_COLORS = { 1: "#F59E0B", 2: "#9CA3AF", 3: "#B45309" };
-
-const TOP_RECYCLERS = [
-  { rank: 1, name: "John Doe", id: "ECO-882", kg: 45.2, points: 4520, reward: "Airtime" },
-  { rank: 2, name: "Amina Smith", id: "ECO-441", kg: 38.0, points: 3800, reward: null },
-  { rank: 3, name: "Chidi Okonkwo", id: "ECO-719", kg: 31.5, points: 3150, reward: "Airtime" },
-  { rank: 4, name: "Bisi Lawal", id: "ECO-160", kg: 29.1, points: 2910, reward: null },
-];
-
-const MATERIAL_STYLES = {
-  Plastic: { bg: "#DBEAFE", text: "#3B82F6" },
-  Paper: { bg: "#FEF3C7", text: "#B45309" },
-  Metal: { bg: "#F3F4F6", text: "#6B7280" },
+const WASTE_COLORS = {
+  PLASTIC: "#3B82F6",
+  PAPER_CARDBOARD: "#F59E0B",
+  CANS_METAL: "#9CA3AF",
+  GLASS: "#06B6D4",
+  E_WASTE: "#7C3AED",
+  OTHER: "#0D631B",
 };
 
-const RECENT_TRANSACTIONS = [
-  { user: "ECO-882", type: "Plastic", weight: "12.5kg", points: "+125" },
-  { user: "ECO-411", type: "Paper", weight: "8.2kg", points: "+82" },
-  { user: "ECO-933", type: "Metal", weight: "4.0kg", points: "+40" },
-  { user: "ECO-105", type: "Plastic", weight: "15.0kg", points: "+150" },
-];
-
-const maxRedeemed = Math.max(...MOST_REDEEMED.map((r) => r.count));
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function Analytics() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalWasteKg: 0,
+    totalPoints: 0,
+    totalRedemptions: 0,
+  });
+  const [monthlyWaste, setMonthlyWaste] = useState([]);
+  const [userGrowth, setUserGrowth] = useState([]);
+  const [wasteByType, setWasteByType] = useState([]);
+  const [mostRedeemed, setMostRedeemed] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAnalytics() {
+      try {
+        const [dashRes, redemptionsRes] = await Promise.allSettled([
+          dashboardService.getAdminDashboard(),
+          rewardsService.getAllRedemptions({ limit: 100 }),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dashRes.status === "fulfilled") {
+          const data = dashRes.value || {};
+          const overview = data.overview && typeof data.overview === "object" ? data.overview : data;
+          const usersByRole = Array.isArray(data.usersByRole) ? data.usersByRole : [];
+
+          const citizenCount = usersByRole.reduce((sum, item) => {
+            const role = String(item?.role || "").toUpperCase();
+            if (role === "CITIZEN") {
+              return sum + Number(item?.count ?? item?.total ?? item?.value ?? 0);
+            }
+            return sum;
+          }, 0);
+
+          const totalUsers = Number(
+            citizenCount > 0
+              ? citizenCount
+              : overview.totalCitizens ?? data.totalCitizens ?? overview.totalUsers ?? data.totalUsers ?? 0
+          );
+
+          const totalWasteKg = Number(
+            overview.totalWeightRecycledKg ??
+            overview.totalWasteKg ??
+            overview.totalWeightKg ??
+            data.totalWasteKg ??
+            data.totalWeightKg ??
+            data.allTimeWeightKg ??
+            0
+          );
+
+          const totalPoints = Number(
+            overview.totalPointsDistributed ??
+            overview.totalPoints ??
+            data.totalPoints ??
+            data.allTimePoints ??
+            0
+          );
+
+          const totalRedemptions = Number(
+            overview.totalRewardsRedeemed ??
+            overview.totalRedemptions ??
+            data.totalRedemptions ??
+            data.redemptionsCount ??
+            0
+          );
+
+          setStats({
+            totalUsers,
+            totalWasteKg,
+            totalPoints,
+            totalRedemptions,
+          });
+
+          const breakdown =
+            data.wasteCategoryBreakdown ??
+            data.categoryBreakdown ??
+            data.wasteBreakdown ??
+            overview.wasteCategoryBreakdown ??
+            overview.wasteBreakdown ??
+            overview.categoryBreakdown ??
+            [];
+
+          if (Array.isArray(breakdown) && breakdown.length > 0) {
+            const pieData = breakdown.map((item, index) => ({
+              name:
+                item.name ||
+                item.category ||
+                item.label ||
+                item.wasteType ||
+                `Category ${index + 1}`,
+              value: Number(
+                item.value ?? item.percent ?? item.share ?? item.count ?? item.totalWeightKg ?? item.weightKg ?? 0
+              ),
+              color:
+                item.color ||
+                WASTE_COLORS[String(item.key || item.name || item.category || item.wasteType || "OTHER").toUpperCase()] ||
+                WASTE_COLORS.OTHER ||
+                "#6B7280",
+            }));
+            setWasteByType(pieData);
+          } else if (breakdown && typeof breakdown === "object") {
+            const entries = Object.entries(breakdown);
+            if (entries.length > 0) {
+              const pieData = entries.map(([key, value], index) => ({
+                name: key
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (char) => char.toUpperCase()),
+                value: Number(value) || 0,
+                color:
+                  WASTE_COLORS[String(key).toUpperCase()] ||
+                  ["#0D631B", "#3B82F6", "#F59E0B", "#7C3AED", "#9CA3AF"][index % 5],
+              }));
+              setWasteByType(pieData);
+            } else {
+              setWasteByType([]);
+            }
+          } else {
+            setWasteByType([]);
+          }
+
+          const monthly =
+            data.monthlyWaste ??
+            data.wasteCollectedMonthly ??
+            data.monthlyCollections ??
+            overview.monthlyWaste ??
+            overview.wasteCollectedMonthly ??
+            overview.monthlyCollections ??
+            [];
+
+          if (Array.isArray(monthly) && monthly.length > 0) {
+            const formatted = monthly.map((item, index) => ({
+              month: item.month || item.label || item.name || MONTH_NAMES[index] || `M${index + 1}`,
+              kg: Number(item.kg ?? item.weightKg ?? item.totalWeightKg ?? item.value ?? item.amount ?? 0),
+            }));
+            setMonthlyWaste(formatted);
+          } else {
+            setMonthlyWaste([]);
+          }
+
+        let growth =
+          data.userGrowth ??
+          data.monthlyUsers ??
+          overview.userGrowth ??
+          overview.monthlyUsers ??
+          [];
+
+        if (!Array.isArray(growth) || growth.length === 0) {
+          try {
+            const usersMeta = await userService.getUsersWithMeta();
+            if (Array.isArray(usersMeta?.userGrowth) && usersMeta.userGrowth.length > 0) {
+              growth = usersMeta.userGrowth;
+            }
+          } catch {
+            // Ignore fallback fetch error
+          }
+        }
+
+        if (Array.isArray(growth) && growth.length > 0) {
+          const formatted = growth.map((item, index) => ({
+            month:
+              item.month ||
+              item.label ||
+              item.name ||
+              item.monthKey ||
+              MONTH_NAMES[index] ||
+              `M${index + 1}`,
+            users: Number(item.count ?? item.users ?? item.total ?? item.value ?? 0),
+          }));
+
+          setUserGrowth(formatted);
+        } else {
+          setUserGrowth([]);
+        }
+      }
+
+        if (redemptionsRes.status === "fulfilled") {
+          const redemptions = redemptionsRes.value?.redemptions ?? redemptionsRes.value?.data ?? redemptionsRes.value ?? [];
+          if (Array.isArray(redemptions) && redemptions.length > 0) {
+            const countMap = {};
+            redemptions.forEach((r) => {
+              const name = r.reward?.title ?? r.rewardName ?? r.name ?? r.reward?.name ?? "Unknown";
+              countMap[name] = (countMap[name] || 0) + 1;
+            });
+            const sorted = Object.entries(countMap)
+              .map(([name, count]) => ({ name, count }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 5);
+            setMostRedeemed(sorted.length > 0 ? sorted : []);
+          } else {
+            setMostRedeemed([]);
+          }
+        }
+      } catch (err) {
+        console.error("Analytics load error:", err);
+        setMonthlyWaste([]);
+        setUserGrowth([]);
+        setWasteByType([]);
+        setMostRedeemed([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadAnalytics();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const hasMonthlyWaste = monthlyWaste.length > 0;
+  const hasUserGrowth = userGrowth.length > 0;
+  const hasWasteBreakdown = wasteByType.length > 0;
+  const hasMostRedeemed = mostRedeemed.length > 0;
+  const hasPlatformSummary = Number(stats.totalWasteKg) > 0 || Number(stats.totalUsers) > 0 || Number(stats.totalRedemptions) > 0;
+  const maxRedeemed = Math.max(...mostRedeemed.map((r) => r.count), 1);
+
+  const STAT_CARDS = [
+    {
+      icon: UserPlus,
+      label: "Total Citizens",
+      value: loading ? "–" : stats.totalUsers.toLocaleString(),
+      color: "#3B82F6",
+      bg: "#DBEAFE",
+    },
+    {
+      icon: Recycle,
+      label: "Waste Collected",
+      value: loading ? "–" : `${Number(stats.totalWasteKg).toLocaleString()} kg`,
+      color: "#0D631B",
+      bg: "#E7F7EC",
+    },
+    {
+      icon: Coins,
+      label: "Points Distributed",
+      value: loading ? "–" : Number(stats.totalPoints).toLocaleString(),
+      color: "#7C3AED",
+      bg: "#EFECFF",
+    },
+    {
+      icon: Wallet,
+      label: "Total Redemptions",
+      value: loading ? "–" : stats.totalRedemptions.toLocaleString(),
+      color: "#B45309",
+      bg: "#FEF3C7",
+    },
+  ];
+
   return (
     <AdminLayout>
-      <div className="flex items-center justify-end gap-3 flex-wrap">
-        <select className="text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 bg-white focus:outline-none">
-          <option>Last 30 Days</option>
-          <option>Last 90 Days</option>
-          <option>This Year</option>
-        </select>
-        <button className="flex items-center gap-1.5 bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15]">
-          <Download className="w-4 h-4" /> Export PDF
-        </button>
+      <div className="flex items-center justify-between gap-3 flex-wrap font-sans">
+        <div>
+          <h1 className="text-xl font-bold text-[#1A1A2E]">Platform Analytics &amp; Reports</h1>
+          <p className="text-sm text-[#6B7280]">Recycling trends and voucher redemptions</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <select className="text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 bg-white text-[#374151] focus:outline-none shadow-xs">
+            <option>Last 30 Days</option>
+            <option>Last 90 Days</option>
+            <option>This Year</option>
+          </select>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors cursor-pointer"
+          >
+            <Download className="w-4 h-4" /> Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}
-      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS.map((stat) => {
+      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+        {STAT_CARDS.map((stat) => {
           const Icon = stat.icon;
-          const TrendIcon = stat.up ? TrendingUp : TrendingDown;
           return (
-            <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+            <div key={stat.label} className="bg-white border border-[#E5E7EB] rounded-2xl p-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span
                   className="w-9 h-9 rounded-full flex items-center justify-center"
@@ -135,256 +321,219 @@ export default function Analytics() {
                 >
                   <Icon className="w-4 h-4" style={{ color: stat.color }} />
                 </span>
-                <span
-                  className={`flex items-center gap-0.5 text-xs font-medium ${
-                    stat.up ? "text-[#16A34A]" : "text-[#DC2626]"
-                  }`}
-                >
-                  <TrendIcon className="w-3 h-3" />
-                  {stat.change}
-                </span>
+                {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-300" />}
               </div>
               <p className="mt-3 text-xs text-[#6B7280]">{stat.label}</p>
               <p className="text-xl font-bold text-[#1A1A2E]">{stat.value}</p>
-              <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: stat.change.replace(/[^0-9]/g, "") + "0%", backgroundColor: stat.color }}
-                />
-              </div>
             </div>
           );
         })}
       </div>
 
       {/* Charts */}
-      <div className="mt-6 grid lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <p className="text-sm font-semibold text-[#1A1A2E] mb-4">Monthly Waste Collection</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={MONTHLY_WASTE}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-              <Tooltip cursor={{ fill: "#F3F4F6" }} formatter={(v) => [`${v} kg`, "Collected"]} />
-              <Bar dataKey="kg" radius={[4, 4, 0, 0]}>
-                {MONTHLY_WASTE.map((entry, i) => (
-                  <Cell key={entry.month} fill={i === MONTHLY_WASTE.length - 1 ? "#0D631B" : "#86EFAC"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      <div className="mt-6 grid lg:grid-cols-2 gap-6 font-sans">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-xs">
+          <p className="text-sm font-semibold text-[#1A1A2E] mb-4">Monthly Waste Collection (kg)</p>
+          {loading ? (
+            <div className="flex h-[200px] flex-col items-center justify-center text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0D631B]" />
+              <span className="text-xs text-[#6B7280]">Loading monthly waste data...</span>
+            </div>
+          ) : hasMonthlyWaste ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={monthlyWaste}>
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+                <Tooltip cursor={{ fill: "#F3F4F6" }} formatter={(v) => [`${v} kg`, "Collected"]} />
+                <Bar dataKey="kg" radius={[4, 4, 0, 0]}>
+                  {monthlyWaste.map((entry, i) => (
+                    <Cell key={entry.month} fill={i === monthlyWaste.length - 1 ? "#0D631B" : "#86EFAC"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[200px] items-center justify-center text-sm text-[#6B7280] text-center px-4">
+              No monthly waste data yet.
+            </div>
+          )}
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <p className="text-sm font-semibold text-[#1A1A2E] mb-4">User Growth</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={USER_GROWTH}>
-              <defs>
-                <linearGradient id="userGrowthFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0D631B" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#0D631B" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-              <Tooltip formatter={(v) => [v, "Users"]} />
-              <Area
-                type="monotone"
-                dataKey="users"
-                stroke="#0D631B"
-                strokeWidth={2}
-                fill="url(#userGrowthFill)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-xs">
+          <p className="text-sm font-semibold text-[#1A1A2E] mb-4">Citizen User Growth</p>
+          {loading ? (
+            <div className="flex h-[200px] flex-col items-center justify-center text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0D631B]" />
+              <span className="text-xs text-[#6B7280]">Loading citizen user growth...</span>
+            </div>
+          ) : hasUserGrowth ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={userGrowth}>
+                <defs>
+                  <linearGradient id="userGrowthFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0D631B" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#0D631B" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+                <Tooltip formatter={(v) => [v, "Users"]} />
+                <Area
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#0D631B"
+                  strokeWidth={2}
+                  fill="url(#userGrowthFill)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[200px] items-center justify-center text-sm text-[#6B7280] text-center px-4">
+              No user growth data yet.
+            </div>
+          )}
         </div>
       </div>
 
       {/* Waste by Type / Most Redeemed / Collection Centers */}
-      <div className="mt-6 grid lg:grid-cols-3 gap-6">
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+      <div className="mt-6 grid lg:grid-cols-3 gap-6 font-sans">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-xs">
           <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Waste by Type</p>
-          <div className="relative">
-            <ResponsiveContainer width="100%" height={130}>
-              <PieChart>
-                <Pie data={WASTE_BY_TYPE} dataKey="value" innerRadius={38} outerRadius={58} paddingAngle={2}>
-                  {WASTE_BY_TYPE.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-lg font-bold text-[#1A1A2E]">5,320</span>
-              <span className="text-[10px] text-[#6B7280]">kg total</span>
+          {loading ? (
+            <div className="flex h-[180px] flex-col items-center justify-center text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0D631B]" />
+              <span className="text-xs text-[#6B7280]">Loading waste breakdown...</span>
             </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-1.5">
-            {WASTE_BY_TYPE.map((item) => (
-              <div key={item.name} className="flex items-center gap-1.5 text-xs text-[#6B7280]">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                {item.name} ({item.value}%)
+          ) : hasWasteBreakdown ? (
+            <>
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={130}>
+                  <PieChart>
+                    <Pie data={wasteByType} dataKey="value" innerRadius={38} outerRadius={58} paddingAngle={2}>
+                      {wasteByType.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-lg font-bold text-[#1A1A2E]">
+                    {Number(stats.totalWasteKg).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-[#6B7280]">kg total</span>
+                </div>
               </div>
-            ))}
-          </div>
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                {wasteByType.map((item) => (
+                  <div key={item.name} className="flex items-center gap-1.5 text-xs text-[#6B7280]">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    {item.name} ({item.value}%)
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex h-[180px] items-center justify-center text-sm text-[#6B7280] text-center px-4">
+              No waste breakdown data yet.
+            </div>
+          )}
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-xs">
           <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Most Redeemed Rewards</p>
-          <div className="space-y-3">
-            {MOST_REDEEMED.map((r) => (
-              <div key={r.name}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[#374151]">{r.name}</span>
-                  <span className="text-[#6B7280]">{r.count}</span>
+          {loading ? (
+            <div className="flex h-[180px] flex-col items-center justify-center text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0D631B]" />
+              <span className="text-xs text-[#6B7280]">Loading redeemed rewards...</span>
+            </div>
+          ) : hasMostRedeemed ? (
+            <div className="space-y-3">
+              {mostRedeemed.map((r) => (
+                <div key={r.name}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-[#374151]">{r.name}</span>
+                    <span className="text-[#6B7280]">{r.count}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#0D631B]"
+                      style={{ width: `${(r.count / maxRedeemed) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#0D631B]"
-                    style={{ width: `${(r.count / maxRedeemed) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Collection Centers</p>
-          <div className="space-y-3">
-            {COLLECTION_CENTERS.map((c) => (
-              <div key={c.name}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[#374151]">{c.name}</span>
-                  <span className="text-[#6B7280]">{c.pct}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-[#0D631B]" style={{ width: `${c.pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Top Recyclers / Recent Transactions */}
-      <div className="mt-6 grid lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Top Recyclers</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-[#6B7280] border-b border-[#E5E7EB]">
-                <th className="pb-2 font-medium">Rank</th>
-                <th className="pb-2 font-medium">User</th>
-                <th className="pb-2 font-medium">Kg</th>
-                <th className="pb-2 font-medium">Points</th>
-                <th className="pb-2 font-medium">Rewards</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TOP_RECYCLERS.map((u) => (
-                <tr key={u.id} className="border-b border-[#F3F4F6]">
-                  <td className="py-2.5">
-                    <span
-                      className="w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                      style={{ backgroundColor: RANK_COLORS[u.rank] || "#D1D5DB" }}
-                    >
-                      {u.rank}
-                    </span>
-                  </td>
-                  <td className="py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#0D631B] text-white text-[10px] font-semibold flex items-center justify-center">
-                        {u.name.split(" ").map((n) => n[0]).join("")}
-                      </span>
-                      <div>
-                        <p className="text-[#1A1A2E] font-medium leading-none">{u.name}</p>
-                        <p className="text-[10px] text-[#9CA3AF]">{u.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-2.5 text-[#374151]">{u.kg}</td>
-                  <td className="py-2.5 text-[#374151]">{u.points.toLocaleString()}</td>
-                  <td className="py-2.5">
-                    {u.reward ? (
-                      <span className="text-xs bg-[#E7F7EC] text-[#0D631B] px-2 py-0.5 rounded-full">
-                        {u.reward}
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-gray-100 text-[#9CA3AF] px-2 py-0.5 rounded-full">
-                        None
-                      </span>
-                    )}
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="flex h-[180px] items-center justify-center text-sm text-[#6B7280] text-center px-4">
+              No redeemed rewards yet.
+            </div>
+          )}
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-[#1A1A2E]">Recent Transactions</p>
-            <a href="/admin/record-waste" className="text-xs text-[#0D631B] hover:underline">
-              View All
-            </a>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-[#6B7280] border-b border-[#E5E7EB]">
-                <th className="pb-2 font-medium">User</th>
-                <th className="pb-2 font-medium">Type</th>
-                <th className="pb-2 font-medium">Wt</th>
-                <th className="pb-2 font-medium">Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RECENT_TRANSACTIONS.map((t) => {
-                const style = MATERIAL_STYLES[t.type];
-                return (
-                  <tr key={t.user} className="border-b border-[#F3F4F6]">
-                    <td className="py-2.5 text-[#1A1A2E]">{t.user}</td>
-                    <td className="py-2.5">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: style.bg, color: style.text }}
-                      >
-                        {t.type}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-[#374151]">{t.weight}</td>
-                    <td className="py-2.5 font-medium text-[#0D631B]">{t.points}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 shadow-xs">
+          <p className="text-sm font-semibold text-[#1A1A2E] mb-3">Platform Summary</p>
+          {loading ? (
+            <div className="flex h-[180px] flex-col items-center justify-center text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0D631B]" />
+              <span className="text-xs text-[#6B7280]">Loading platform summary...</span>
+            </div>
+          ) : hasPlatformSummary ? (
+            <div className="space-y-4">
+              {[
+                { label: "CO₂ Prevented", value: `${(Number(stats.totalWasteKg) * 1.85).toFixed(0)} kg`, color: "#0D631B" },
+                { label: "Trees Equivalent", value: `${((Number(stats.totalWasteKg) * 1.85) / 21.77).toFixed(0)}`, color: "#16A34A" },
+                { label: "Water Saved", value: `${(Number(stats.totalWasteKg) * 120).toLocaleString()} L`, color: "#0369A1" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-[#374151]">{item.label}</span>
+                    <span className="font-semibold" style={{ color: item.color }}>
+                      {item.value}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gray-100" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-[180px] items-center justify-center text-sm text-[#6B7280] text-center px-4">
+              No platform summary data yet.
+            </div>
+          )}
         </div>
       </div>
 
       {/* Summary banner */}
-      <div className="mt-6 bg-[#12151C] rounded-xl px-6 py-5 flex items-center justify-between flex-wrap gap-4">
+      <div className="mt-6 bg-[#12151C] rounded-2xl px-6 py-5 flex items-center justify-between flex-wrap gap-4 font-sans text-white shadow-sm">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-full bg-[#0D631B] flex items-center justify-center">
             <Trophy className="w-5 h-5 text-white" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-white">January Summary</p>
+            <p className="text-sm font-semibold text-white">Lagos Environmental Milestone</p>
             <p className="text-xs text-white/60">
-              Record breaking month for plastic collection in Ikeja.
+              {loading
+                ? "Loading platform data..."
+                : `Over ${Number(stats.totalWasteKg).toLocaleString()} kg of recyclable waste diverted from Lagos landfills.`}
             </p>
           </div>
         </div>
         <div className="flex gap-6 text-center">
           <div>
-            <p className="text-[10px] text-white/50">WASTE</p>
-            <p className="text-sm font-bold text-white">820kg</p>
+            <p className="text-[10px] text-white/50 uppercase">Total Waste</p>
+            <p className="text-sm font-bold text-white">
+              {loading ? "–" : `${Number(stats.totalWasteKg).toLocaleString()} kg`}
+            </p>
           </div>
           <div>
-            <p className="text-[10px] text-white/50">USERS</p>
-            <p className="text-sm font-bold text-white">152</p>
+            <p className="text-[10px] text-white/50 uppercase">Active Citizens</p>
+            <p className="text-sm font-bold text-white">
+              {loading ? "–" : stats.totalUsers.toLocaleString()}
+            </p>
           </div>
           <div>
-            <p className="text-[10px] text-white/50">REVENUE</p>
-            <p className="text-sm font-bold text-white">₦80k</p>
+            <p className="text-[10px] text-white/50 uppercase">Redemptions</p>
+            <p className="text-sm font-bold text-white">
+              {loading ? "–" : stats.totalRedemptions.toLocaleString()}
+            </p>
           </div>
         </div>
       </div>

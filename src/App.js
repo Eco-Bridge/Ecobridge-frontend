@@ -1,4 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -24,30 +26,32 @@ import Contact from './pages/Contact.jsx'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/how-it-works" element={<HowItWorks />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/waitlist" element={<Waitlist />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/reward" element={<Reward />} />
-      <Route path="/reward-history" element={<RewardHistory />} />
-      <Route path="/recycle-history" element={<RecycleHistory />} />
-      <Route path="/notifications" element={<Notifications />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/admin-login" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/record-waste" element={<RecordWaste />} />
-      <Route path="/admin/manage-users" element={<ManageUsers />} />
-      <Route path="/admin/manage-users/:userId" element={<UserDetail />} />
-      <Route path="/admin/manage-rewards" element={<ManageRewards />} />
-      <Route path="/admin/analytics" element={<Analytics />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/waitlist" element={<Waitlist />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/reward" element={<Reward />} />
+        <Route path="/reward-history" element={<RewardHistory />} />
+        <Route path="/recycle-history" element={<RecycleHistory />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/record-waste" element={<RecordWaste />} />
+        <Route path="/admin/manage-users" element={<ManageUsers />} />
+        <Route path="/admin/manage-users/:userId" element={<UserDetail />} />
+        <Route path="/admin/manage-rewards" element={<ManageRewards />} />
+        <Route path="/admin/analytics" element={<Analytics />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 

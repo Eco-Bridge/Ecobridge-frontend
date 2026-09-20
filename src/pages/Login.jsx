@@ -1,17 +1,44 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Recycle, Star, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Recycle, Star, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Navigates to dashboard view on submit
-    navigate('/dashboard');
+    setErrorMessage('');
+    setLoading(true);
+
+    try {
+      const result = await login({ email, password });
+      const userRole = (result.user?.role || result.role || 'USER').toUpperCase();
+
+      if (['ADMIN', 'COLLECTOR', 'RECYCLING_COMPANY'].includes(userRole)) {
+        setErrorMessage('This account is for the staff portal. Please use the Admin / Collector login page.');
+        return;
+      }
+
+      if (userRole !== 'USER' && userRole !== 'CITIZEN') {
+        setErrorMessage('This account is not a citizen account. Please use the correct login portal.');
+        return;
+      }
+
+      navigate('/dashboard', { replace: true });
+      console.log('User logged in successfully:', result);
+    } catch (err) {
+      setErrorMessage(err.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,17 +95,24 @@ export default function Login() {
             </p>
           </div>
 
+          {errorMessage && (
+            <div className="mb-5 flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Email Address
+                Email Address or Phone
               </label>
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="you@example.com or phone"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B6B32] focus:border-transparent transition"
               />
             </div>
@@ -127,9 +161,17 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3.5 px-4 bg-[#1B6B32] hover:bg-[#155427] text-white font-medium text-sm rounded-xl shadow-xs transition duration-150 cursor-pointer"
+              disabled={loading}
+              className="w-full py-3.5 px-4 bg-[#1B6B32] hover:bg-[#155427] text-white font-medium text-sm rounded-xl shadow-xs transition duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Login to My Account
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                <span>Login to My Account</span>
+              )}
             </button>
           </form>
 
@@ -155,7 +197,7 @@ export default function Login() {
             >
               <div className="flex items-center gap-2 font-medium">
                 <span className="w-4 h-4 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-[10px]">✓</span>
-                <span>Admin? Log in here</span>
+                <span>Admin / Collector? Log in here</span>
               </div>
               <ArrowRight className="w-4 h-4 text-emerald-700" />
             </button>

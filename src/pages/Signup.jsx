@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Eye, EyeOff, Check } from "lucide-react";
+import { Eye, EyeOff, Check, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import Logo from "../components/Logo";
 import SignupIllustration from "../assets/signup.jpg";
-// import BrandPanel from "../components/Brandpanel";
+import { useAuth } from "../context/AuthContext";
 
 const BENEFITS = [
   {
@@ -10,8 +11,8 @@ const BENEFITS = [
     desc: "Convert your recyclables into points redeemable for cash and essentials.",
   },
   {
-    title: "Build Community",
-    desc: "Connect with local eco-champions and track your collective impact.",
+    title: "50 Welcome Eco-Points",
+    desc: "Get an instant 50 points bonus credited to your wallet upon registration.",
   },
   {
     title: "Cleaner Environment",
@@ -40,26 +41,51 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [welcomeBonus, setWelcomeBonus] = useState(false);
 
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const strength = getPasswordStrength(password);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!agreed) {
       setError("Please agree to the Terms of Service and Privacy Policy.");
       return;
     }
     setError("");
-    // TODO: wire up to your Node.js signup endpoint
-    console.log({ name, email, phone, password });
+    setLoading(true);
+
+    try {
+      const formattedPhone = phone.startsWith('+234')
+        ? phone
+        : phone.startsWith('0')
+        ? `+234${phone.slice(1)}`
+        : `+234${phone}`;
+
+      await register({
+        name,
+        email,
+        phone: formattedPhone,
+        password,
+        role: 'USER',
+      });
+
+      setWelcomeBonus(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-screen flex flex-col md:flex-row font-sans">
       {/* Left panel */}
-
-      {/* <BrandPanel /> */}
-
       <div className="w-full md:w-[38%] bg-[#0D631B] text-white p-8 md:p-10 flex flex-col justify-between">
         <div className="flex items-center gap-2">
           <Logo variant="light" />
@@ -89,7 +115,11 @@ export default function Signup() {
           </ul>
         </div>
 
-        <img src={SignupIllustration} alt="People sorting recyclables in Lagos" className="rounded-xl w-full h-60 object-cover" />
+        <img
+          src={SignupIllustration}
+          alt="People sorting recyclables in Lagos"
+          className="rounded-xl w-full h-60 object-cover"
+        />
       </div>
 
       {/* Right panel */}
@@ -100,21 +130,38 @@ export default function Signup() {
           </h2>
           <p className="text-sm text-[#6B7280] mt-1">
             Already a member?{" "}
-            <a href="/login" className="text-[#0D631B] font-medium hover:underline">
+            <Link to="/login" className="text-[#0D631B] font-medium hover:underline">
               Log in
-            </a>
+            </Link>
           </p>
+
+          {welcomeBonus && (
+            <div className="mt-4 flex items-center gap-2 bg-[#E7F7EC] border border-[#0D631B]/30 text-[#0D631B] text-sm p-3.5 rounded-xl animate-pulse">
+              <Sparkles className="w-5 h-5 text-[#0D631B]" />
+              <div>
+                <p className="font-bold">Welcome aboard! 🎉</p>
+                <p className="text-xs">+50 welcome eco-points have been added to your wallet.</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm p-3.5 rounded-xl">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#374151] mb-1">
-                Name
+                Full Name
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
+                placeholder="e.g. Hameeda Oyewopo"
                 required
                 className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
               />
@@ -194,7 +241,7 @@ export default function Signup() {
               )}
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-[#374151]">
+            <label className="flex items-start gap-2 text-sm text-[#374151] cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreed}
@@ -206,24 +253,30 @@ export default function Signup() {
               />
               <span>
                 I agree to the{" "}
-                <a href="/terms" className="text-[#0D631B] hover:underline">
+                <a href="#terms" className="text-[#0D631B] hover:underline">
                   Terms of Service
                 </a>{" "}
                 and{" "}
-                <a href="/privacy" className="text-[#0D631B] hover:underline">
+                <a href="#privacy" className="text-[#0D631B] hover:underline">
                   Privacy Policy
                 </a>
                 .
               </span>
             </label>
 
-            {error && <p className="text-sm text-[#EA4335]">{error}</p>}
-
             <button
               type="submit"
-              className="w-full bg-[#0D631B] text-white font-medium py-2.5 rounded-lg hover:bg-[#0a4f15] transition-colors"
+              disabled={loading || welcomeBonus}
+              className="w-full bg-[#0D631B] text-white font-medium py-2.5 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
-              Create my account
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <span>Create my account</span>
+              )}
             </button>
           </form>
 

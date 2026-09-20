@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Pencil,
@@ -10,8 +10,15 @@ import {
   EyeOff,
   CheckCircle2,
   Circle,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
-import PlainLayout from "../layouts/Plainlayout";
+import { Link, useNavigate } from "react-router-dom";
+import DashboardLayout from "../layouts/DashboardLayout";
+import AdminLayout from "../layouts/AdminLayout";
+import { useAuth } from "../context/AuthContext";
+import { authService } from "../services";
+import { toNumber } from "../utils/formatters";
 
 const MENU = [
   { key: "edit-profile", label: "Edit Profile", icon: Pencil },
@@ -20,21 +27,52 @@ const MENU = [
 ];
 
 export default function Profile() {
+  const { user, logout, updateUserProfile } = useAuth();
+  const navigate = useNavigate();
+  const isStaffUser = ['ADMIN', 'COLLECTOR', 'RECYCLING_COMPANY'].includes((user?.role || '').toUpperCase());
+  const Layout = isStaffUser ? AdminLayout : DashboardLayout;
+  const dashboardPath = isStaffUser ? "/admin/dashboard" : "/dashboard";
+
   const [activeTab, setActiveTab] = useState("edit-profile");
-  const [showSuccess, setShowSuccess] = useState(true);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const AUTO_DISMISS_MS = 30000;
 
-  const [firstName, setFirstName] = useState("Hameedat");
-  const [email, setEmail] = useState("hameeda@email.com");
-  const [phone, setPhone] = useState("800 000 0000");
+  useEffect(() => {
+    if (!successMessage && !errorMessage) return;
 
+    const timer = setTimeout(() => {
+      setSuccessMessage("");
+      setErrorMessage("");
+    }, AUTO_DISMISS_MS);
+
+    return () => clearTimeout(timer);
+  }, [successMessage, errorMessage]);
+
+  // Profile form state
+  const [name, setName] = useState(user?.name || "Hameedat Oyewopo");
+  const [email, setEmail] = useState(user?.email || "hameeda@email.com");
+  const [phone, setPhone] = useState(user?.phone?.replace("+234", "") || "8000000000");
+  const [address, setAddress] = useState(user?.address || "Lagos, Nigeria");
+
+  // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
 
-  // Real-time validation — each requirement is just a regex test against
-  // whatever's currently typed, re-checked on every keystroke.
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setPhone((user.phone || "").replace("+234", "").trim());
+      setAddress(user.address || "Lagos, Nigeria");
+    }
+  }, [user]);
+
+  // Real-time password validation
   const requirements = [
     { label: "Minimum 8 characters", met: newPassword.length >= 8 },
     { label: "At least one uppercase letter", met: /[A-Z]/.test(newPassword) },
@@ -45,72 +83,151 @@ export default function Profile() {
   const strengthLabel = metCount <= 1 ? "Weak" : metCount <= 3 ? "Medium" : "Strong";
   const strengthColor = metCount <= 1 ? "#DC2626" : metCount <= 3 ? "#F59E0B" : "#27AE60";
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    console.log({ firstName, email, phone });
-    setShowSuccess(true);
+    setSuccessMessage("");
+    setErrorMessage("");
+    setLoading(true);
+
+    try {
+      const formattedPhone = phone.startsWith("+234") ? phone : `+234${phone}`;
+      await updateUserProfile({
+        name,
+        phone: formattedPhone,
+        address,
+      });
+      setSuccessMessage("Profile updated successfully!");
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to update profile.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdatePassword = (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    console.log({ currentPassword, newPassword });
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    if (newPassword.length < 8) {
+      setErrorMessage("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.changePassword({ currentPassword, newPassword });
+      setSuccessMessage("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setErrorMessage(err.message || "Failed to change password. Please verify current password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLogout = () => {
-    // TODO: clear real auth/session once you have one
-    console.log("Logging out");
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    await logout();
+    navigate(isStaffUser ? "/admin-login" : "/login");
   };
+
+  const initials = (name || "Eco User")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const totalPoints = toNumber(
+    user?.points ?? user?.pointsBalance ?? user?.balance ?? user?.available ?? 0
+  );
+  const totalKg = toNumber(
+    user?.totalRecycled ?? user?.totalRecycledKg ?? user?.kgRecycled ?? user?.totalWasteKg ?? user?.recycledKg ?? 0
+  );
 
   return (
-    <PlainLayout>
-      <a
-        href="/dashboard"
+    <Layout>
+      <Link
+        to={dashboardPath}
         className="inline-flex items-center gap-1 text-sm text-[#6B7280] hover:text-[#374151]"
       >
-        <ArrowLeft className="w-4 h-4" /> Back
-      </a>
+        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+      </Link>
       <p className="mt-1 text-sm text-[#6B7280]">
-        Manage your personal information and settings
+        Manage your personal information, security, and account preferences
       </p>
 
-      <div className="mt-6 grid md:grid-cols-[280px_1fr] gap-6">
+      {successMessage && (
+        <div className="mt-4 flex items-center justify-between bg-[#E7F7EC] text-[#0D631B] text-sm px-4 py-2.5 rounded-xl border border-[#CDEED3]">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" /> {successMessage}
+          </span>
+          <button onClick={() => setSuccessMessage("")} className="text-[#0D631B]/70 hover:text-[#0D631B]">
+            ×
+          </button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mt-4 flex items-center justify-between bg-red-50 text-red-700 text-sm px-4 py-2.5 rounded-xl border border-red-200">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {errorMessage}
+          </span>
+          <button onClick={() => setErrorMessage("")} className="text-red-700/70 hover:text-red-700">
+            ×
+          </button>
+        </div>
+      )}
+
+      <div className="mt-6 grid md:grid-cols-[280px_1fr] gap-6 font-sans">
         {/* Left column */}
         <div className="space-y-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 text-center">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 text-center shadow-xs">
             <div className="relative inline-block">
-              <span className="w-16 h-16 rounded-full bg-[#0D631B] text-white text-xl font-semibold flex items-center justify-center">
-                HO
+              <span className="w-16 h-16 rounded-full bg-[#0D631B] text-white text-xl font-bold flex items-center justify-center">
+                {initials}
               </span>
-              <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center">
+              <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center shadow-xs">
                 <Camera className="w-3 h-3 text-[#6B7280]" />
               </span>
             </div>
-            <p className="mt-3 text-sm font-semibold text-[#1A1A2E]">{firstName}</p>
+            <p className="mt-3 text-sm font-semibold text-[#1A1A2E]">{name}</p>
             <p className="text-xs text-[#6B7280]">{email}</p>
-            <p className="mt-1 text-xs text-[#9CA3AF]">Member since January 2025</p>
+            <p className="mt-1 text-xs text-[#9CA3AF]">
+              Role: <span className="font-semibold text-[#0D631B]">{user?.role || "Citizen"}</span>
+            </p>
 
             <div className="mt-4 pt-4 border-t border-[#E5E7EB] grid grid-cols-2 text-center">
               <div>
-                <p className="text-lg font-bold text-[#0D631B]">1,250</p>
-                <p className="text-[10px] text-[#6B7280] tracking-wide">POINTS</p>
+                <p className="text-lg font-bold text-[#0D631B]">{totalPoints.toLocaleString()}</p>
+                <p className="text-[10px] text-[#6B7280] tracking-wide uppercase font-semibold">Points</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-[#0D631B]">25.5</p>
-                <p className="text-[10px] text-[#6B7280] tracking-wide">KG RECYCLED</p>
+                <p className="text-lg font-bold text-[#0D631B]">{totalKg} kg</p>
+                <p className="text-[10px] text-[#6B7280] tracking-wide uppercase font-semibold">Recycled</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-xs">
             {MENU.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.key;
               return (
                 <button
                   key={item.key}
-                  onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-2 text-sm px-4 py-3 border-b border-[#F3F4F6] last:border-b-0 ${
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    setSuccessMessage("");
+                    setErrorMessage("");
+                  }}
+                  className={`w-full flex items-center gap-2.5 text-sm px-4 py-3 border-b border-[#F3F4F6] last:border-b-0 cursor-pointer transition-colors ${
                     isActive
                       ? "bg-[#E7F7EC] text-[#0D631B] font-medium"
                       : "text-[#374151] hover:bg-gray-50"
@@ -123,7 +240,7 @@ export default function Profile() {
             })}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 text-sm px-4 py-3 text-[#DC2626] hover:bg-red-50"
+              className="w-full flex items-center gap-2.5 text-sm px-4 py-3 text-[#DC2626] hover:bg-red-50 cursor-pointer transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Logout
@@ -132,42 +249,35 @@ export default function Profile() {
         </div>
 
         {/* Right column */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs">
           {activeTab === "edit-profile" && (
             <>
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[#1A1A2E]">Edit Profile</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-[#1A1A2E]">Edit Profile</h2>
+                  <p className="text-xs text-[#6B7280]">Update your personal and contact details</p>
+                </div>
                 <button
-                  onClick={handleSaveProfile}
-                  className="text-sm bg-[#0D631B] text-white px-4 py-2 rounded-lg hover:bg-[#0a4f15]"
+                  type="submit"
+                  form="profile-form"
+                  disabled={loading}
+                  className="text-sm bg-[#0D631B] text-white font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                 >
-                  Save Changes
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading ? "Saving Changes..." : "Save Changes"}
                 </button>
               </div>
 
-              {showSuccess && (
-                <div className="mt-4 flex items-center justify-between bg-[#E7F7EC] text-[#0D631B] text-sm px-4 py-2.5 rounded-lg">
-                  <span className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Profile updated successfully!
-                  </span>
-                  <button
-                    onClick={() => setShowSuccess(false)}
-                    className="text-[#0D631B]/70 hover:text-[#0D631B]"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="mt-5 space-y-4 max-w-md">
+              <form id="profile-form" onSubmit={handleSaveProfile} className="mt-5 space-y-4 max-w-md">
                 <div>
                   <label className="block text-sm font-medium text-[#374151] mb-1">
-                    First Name
+                    Full Name
                   </label>
                   <input
                     type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
                   />
                 </div>
@@ -178,12 +288,12 @@ export default function Profile() {
                   </label>
                   <input
                     type="email"
+                    disabled
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
+                    className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm bg-gray-50 text-[#6B7280] cursor-not-allowed"
                   />
-                  <p className="mt-1 text-xs text-[#9CA3AF]">
-                    We'll never share your email with anyone else.
+                  <p className="mt-1 text-[11px] text-[#9CA3AF]">
+                    Email address is tied to your account identity.
                   </p>
                 </div>
 
@@ -206,14 +316,26 @@ export default function Profile() {
 
                 <div>
                   <label className="block text-sm font-medium text-[#374151] mb-1">
-                    Account Type
+                    Location / Address
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. Ikeja, Lagos"
+                    className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#374151] mb-1">
+                    Account Role
+                  </label>
+                  <input
                     disabled
-                    className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm bg-gray-50 text-[#9CA3AF]"
-                  >
-                    <option>Individual</option>
-                  </select>
+                    value={user?.role || "USER"}
+                    className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm bg-gray-50 text-[#6B7280]"
+                  />
                 </div>
               </form>
             </>
@@ -235,6 +357,7 @@ export default function Profile() {
                     <div className="relative">
                       <input
                         type={showCurrent ? "text" : "password"}
+                        required
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
@@ -256,6 +379,7 @@ export default function Profile() {
                     <div className="relative">
                       <input
                         type={showNew ? "text" : "password"}
+                        required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
@@ -286,10 +410,11 @@ export default function Profile() {
 
                   <div>
                     <label className="block text-sm font-medium text-[#374151] mb-1">
-                      Confirm Password
+                      Confirm New Password
                     </label>
                     <input
                       type={showNew ? "text" : "password"}
+                      required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D631B]/40 focus:border-[#0D631B]"
@@ -298,13 +423,15 @@ export default function Profile() {
 
                   <button
                     type="submit"
-                    className="text-sm bg-[#0D631B] text-white px-4 py-2 rounded-lg hover:bg-[#0a4f15]"
+                    disabled={loading}
+                    className="text-sm bg-[#0D631B] text-white font-medium px-4 py-2.5 rounded-lg hover:bg-[#0a4f15] transition-colors flex items-center gap-2 disabled:opacity-60 cursor-pointer"
                   >
-                    Update Password
+                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {loading ? "Updating Password..." : "Update Password"}
                   </button>
                 </form>
 
-                <div className="bg-gray-50 rounded-xl p-4 h-fit">
+                <div className="bg-gray-50 rounded-xl p-4 h-fit border border-gray-100">
                   <p className="text-xs font-semibold text-[#374151]">
                     Password Requirements
                   </p>
@@ -333,13 +460,29 @@ export default function Profile() {
           )}
 
           {activeTab === "notifications" && (
-            <div className="text-sm text-[#6B7280]">
-              Notification preferences — send a screenshot of this tab's
-              design and we'll build it next.
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-[#1A1A2E]">Notification Preferences</h2>
+              <p className="text-xs text-[#6B7280]">Choose how you receive updates about points and redemptions</p>
+              
+              <div className="space-y-3 pt-2">
+                {[
+                  { title: "Email Notifications", desc: "Receive email confirmation upon waste drop-off and voucher generation." },
+                  { title: "SMS Alerts", desc: "Get SMS updates on balance changes and urgent point expiration reminders." },
+                  { title: "Promotional & Community News", desc: "Get notified about double points weekends and new Lagos collection centers." },
+                ].map((pref, i) => (
+                  <label key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" defaultChecked={i < 2} className="mt-0.5 rounded text-[#0D631B] accent-[#0D631B]" />
+                    <div>
+                      <p className="text-sm font-medium text-[#1A1A2E]">{pref.title}</p>
+                      <p className="text-xs text-[#6B7280]">{pref.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
-    </PlainLayout>
+    </Layout>
   );
 }
