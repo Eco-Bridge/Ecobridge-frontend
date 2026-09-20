@@ -45,9 +45,9 @@ export default function Footer({ variant = "full" }) {
   }
 
   return (
-    <footer className="bg-[#EAF6EC] px-6 md:px-10 py-10">
-      <div className="max-w-6xl mx-auto grid sm:grid-cols-2 md:grid-cols-4 gap-8">
-        <div>
+    <footer className="bg-[#EAF6EC] px-6 sm:px-8 md:px-10 py-10 sm:py-12">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2">
             <Leaf className="w-5 h-5 text-[#0D631B]" />
             <span className="font-semibold text-[#1A1A2E]">EcoBridge</span>

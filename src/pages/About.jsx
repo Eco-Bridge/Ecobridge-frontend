@@ -92,11 +92,11 @@ export default function About() {
           <div className="mt-12">
             {/* Line + year badges — separate fixed-height row so card length can never shift alignment */}
             <div className="relative h-10">
-              <div className="absolute top-1/2 left-0 right-0 h-px bg-[#E5E7EB] -translate-y-1/2" />
-              <div className="relative grid md:grid-cols-3 gap-8">
+              <div className="hidden md:block absolute top-1/2 left-0 right-0 h-px bg-[#E5E7EB] -translate-y-1/2" />
+              <div className="mt-4 grid md:grid-cols-3 gap-24 p-10">
                 {STORY.map((item) => (
                   <div key={item.year} className="flex justify-center">
-                    <span className="bg-[#0D631B] text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+                    <span className="bg-[#0D631B] text-white text-xs font-semibold px-3 py-2 rounded-full">
                       {item.year}
                     </span>
                   </div>
