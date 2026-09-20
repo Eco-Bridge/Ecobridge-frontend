@@ -51,17 +51,17 @@ export default function ManageRewards() {
 
   return (
     <AdminLayout>
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-[#1A1A2E]">Reward Inventory</h1>
           <p className="text-sm text-[#6B7280]">Manage and track available user rewards.</p>
         </div>
-        <button className="flex items-center gap-1.5 bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15]">
+        <button className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-[#0D631B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#0a4f15]">
           <Plus className="w-4 h-4" /> Add New Reward
         </button>
       </div>
 
-      <div className="mt-6 grid sm:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         {STATS.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -81,7 +81,7 @@ export default function ManageRewards() {
         })}
       </div>
 
-      <div className="mt-6 relative max-w-sm">
+      <div className="mt-6 relative w-full sm:max-w-sm">
         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           type="text"
@@ -92,7 +92,7 @@ export default function ManageRewards() {
         />
       </div>
 
-      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((reward) => {
           const Icon = reward.icon;
           return (
