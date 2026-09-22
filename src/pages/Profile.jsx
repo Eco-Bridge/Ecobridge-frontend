@@ -37,7 +37,7 @@ export default function Profile() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const AUTO_DISMISS_MS = 30000;
+  const AUTO_DISMISS_MS = 3000;
 
   useEffect(() => {
     if (!successMessage && !errorMessage) return;
@@ -51,10 +51,10 @@ export default function Profile() {
   }, [successMessage, errorMessage]);
 
   // Profile form state
-  const [name, setName] = useState(user?.name || "Hameedat Oyewopo");
-  const [email, setEmail] = useState(user?.email || "hameeda@email.com");
-  const [phone, setPhone] = useState(user?.phone?.replace("+234", "") || "8000000000");
-  const [address, setAddress] = useState(user?.address || "Lagos, Nigeria");
+  const [name, setName] = useState(user?.name );
+  const [email, setEmail] = useState(user?.email);
+  const [phone, setPhone] = useState(user?.phone?.replace("+234", "") );
+  const [address, setAddress] = useState(user?.address || "Nigeria");
 
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("");

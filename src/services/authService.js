@@ -1,5 +1,6 @@
 import apiClient, { setStoredAuth, clearStoredAuth } from './apiClient';
 
+
 export const authService = {
   /**
    * Register a new user account (Public)

@@ -25,7 +25,7 @@ export function setStoredAuth(token, user) {
 /**
  * Clear stored auth
  */
-export function clearStoredAuth() {
+export function clearStoredAuth() {  
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
