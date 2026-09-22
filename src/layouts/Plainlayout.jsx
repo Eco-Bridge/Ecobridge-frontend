@@ -6,6 +6,13 @@ import { useAuth } from "../context/AuthContext";
 export default function PlainLayout({ children }) {
   const { user } = useAuth();
   const isStaff = ['ADMIN', 'COLLECTOR', 'RECYCLING_COMPANY'].includes((user?.role || '').toUpperCase());
+  const userName = user?.name ;
+   const initials = (userName || "User")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#F8F7FB] flex flex-col">
@@ -20,7 +27,7 @@ export default function PlainLayout({ children }) {
             <Bell className="w-5 h-5" />
           </Link>
           <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center">
-            {user?.name ? user.name[0] : "H"}
+            {initials}
           </span>
         </div>
       </header>

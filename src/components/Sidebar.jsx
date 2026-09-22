@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { LayoutDashboard, Gift, RotateCcw, Clock, PanelLeftClose, PanelLeftOpen, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Gift,
+  RotateCcw,
+  Clock,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LogOut,
+} from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,18 +19,18 @@ const DEFAULT_LINKS = [
   { label: "Reward History", path: "/reward-history", icon: Clock },
 ];
 
-export default function Sidebar({ 
-  links = DEFAULT_LINKS, 
+export default function Sidebar({
+  links = DEFAULT_LINKS,
   profilePath = "/profile",
   mobileOpen,
   setMobileOpen,
-  }) {
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const userName = user?.name || "Hameeda Oyewopo";
-  const initials = (userName || "User")
+  const userName = user?.name ;
+   const initials = (userName || "User")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -30,121 +38,218 @@ export default function Sidebar({
     .toUpperCase();
 
   return (
-  <>
-    {mobileOpen && (
-      <div
-        className="fixed inset-0 bg-black/40 z-40 md:hidden"
-        onClick={() => setMobileOpen(false)}
-      />
-    )}
+    <>
+      {/* =========================
+          MOBILE OPEN BUTTON
+          Shows ONLY when sidebar is closed
+      ========================== */}
+      {!mobileOpen && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="
+            md:hidden
+            fixed
+            top-2
+            left-4
+            z-30
+            w-10
+            h-10
+            rounded-lg
+            bg-[#E7F7EC]
+            text-[#0D631B]
+            flex
+            items-center
+            justify-center
+            shadow-sm
+          "
+          aria-label="Open sidebar"
+        >
+          <PanelLeftClose className="w-5 h-5" />
+        </button>
+      )}
 
-    <aside
-      className={`
-        shrink-0
-        bg-white
-        border-r border-[#E5E7EB]
-        flex flex-col justify-between
-        transition-all duration-200
-        fixed md:sticky
-        top-0 left-0
-        h-screen
-        z-50 md:z-20
-        w-56
-        md:${collapsed ? "w-16" : "w-56"}
-        ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-      `}
-    >
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="px-4 py-5 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
-          {!collapsed && <Logo />}
-          <button
-            onClick={() => {
-              if (mobileOpen) {
-                setMobileOpen(false);
-              } else {
-                setCollapsed((c) => !c);
+      {/* =========================
+          MOBILE OVERLAY
+      ========================== */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* =========================
+          SIDEBAR
+      ========================== */}
+      <aside
+        className={`
+          shrink-0
+          bg-white
+          border-r border-[#E5E7EB]
+          flex flex-col justify-between
+          transition-all duration-200
+          fixed md:sticky
+          top-0 left-0
+          h-screen
+          z-50 md:z-20
+          w-56
+          md:${collapsed ? "w-16" : "w-56"}
+          ${
+            mobileOpen
+              ? "translate-x-0"
+              : "-translate-x-full md:translate-x-0"
+          }
+        `}
+      >
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+
+          {/* =========================
+              SIDEBAR HEADER
+          ========================== */}
+          <div className="px-4 py-5 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+
+            {/* Logo */}
+            <div className="flex items-center">
+              <Logo />
+            </div>
+
+            {/* MOBILE CLOSE BUTTON */}
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="
+                md:hidden
+                w-8
+                h-8
+                rounded-lg
+                bg-[#E7F7EC]
+                text-[#0D631B]
+                flex
+                items-center
+                justify-center
+                shrink-0
+                hover:bg-[#d9f0dd]
+              "
+              aria-label="Close sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+
+            {/* DESKTOP COLLAPSE BUTTON */}
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={
+                collapsed ? "Expand sidebar" : "Collapse sidebar"
               }
-            }}
-            aria-label={
-              mobileOpen
-                ? "Close sidebar"
-                : collapsed
-                ? "Expand sidebar"
-                : "Collapse sidebar"
-            }
-            className="w-8 h-8 rounded-lg bg-[#E7F7EC] text-[#0D631B] flex items-center justify-center shrink-0 hover:bg-[#d9f0dd]"
-          >
-          
-            {mobileOpen ? (
-                <PanelLeftClose className="w-4 h-4" />
-              ) : collapsed ? (
+              className="
+                hidden
+                md:flex
+                w-8
+                h-8
+                rounded-lg
+                bg-[#E7F7EC]
+                text-[#0D631B]
+                items-center
+                justify-center
+                shrink-0
+                hover:bg-[#d9f0dd]
+              "
+            >
+              {collapsed ? (
                 <PanelLeftOpen className="w-4 h-4" />
               ) : (
                 <PanelLeftClose className="w-4 h-4" />
               )}
-          </button>
-        </div>
+            </button>
+          </div>
 
-        <nav className="mt-4 px-3 space-y-1 overflow-y-auto flex-1">
-          {links.map((link) => {
-            const Icon = link.icon;
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                title={collapsed ? link.label : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${
-                  collapsed ? "md:justify-center" : ""
-                } ${
-                  isActive
-                    ? "bg-[#E7F7EC] text-[#0D631B] font-semibold"
-                    : "text-[#374151] hover:bg-gray-50"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className={collapsed ? "md:hidden" : ""}>
+          {/* =========================
+              NAVIGATION
+          ========================== */}
+          <nav className="mt-4 px-3 space-y-1 overflow-y-auto flex-1">
+            {links.map((link) => {
+              const Icon = link.icon;
+              const isActive = location.pathname === link.path;
+
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setMobileOpen(false)}
+                  title={collapsed ? link.label : undefined}
+                  className={`
+                    flex
+                    items-center
+                    gap-3
+                    px-3
+                    py-2.5
+                    rounded-lg
+                    text-sm
+                    ${collapsed ? "md:justify-center" : ""}
+                    ${
+                      isActive
+                        ? "bg-[#E7F7EC] text-[#0D631B] font-semibold"
+                        : "text-[#374151] hover:bg-gray-50"
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+
+                  <span className={collapsed ? "md:hidden" : ""}>
                     {link.label}
                   </span>
-
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className="px-4 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-2 shrink-0 bg-white">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center shrink-0">
-            {initials}
-          </span>
-
-          <div className={`${collapsed ? "md:hidden" : ""} min-w-0`}>
-            <p className="text-sm font-medium text-[#1A1A2E] truncate">
-              {userName}
-            </p>
-
-            <Link
-              to={profilePath}
-              onClick={() => setMobileOpen(false)}
-              className="text-xs text-[#6B7280] hover:text-[#0D631B]"
-            >
-              View Profile
-            </Link>
-          </div>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        <button
-          onClick={logout}
-          title="Logout"
-          className={`text-[#6B7280] hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 cursor-pointer transition-colors shrink-0 ${
-            collapsed ? "md:hidden" : ""
-          }`}
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
-    </aside>
-  </>
+        {/* =========================
+            USER SECTION
+        ========================== */}
+        <div className="px-4 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-2 shrink-0 bg-white">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-8 h-8 rounded-full bg-[#0D631B] text-white text-xs font-semibold flex items-center justify-center shrink-0">
+              {initials}
+            </span>
+
+            <div
+              className={`${
+                collapsed ? "md:hidden" : ""
+              } min-w-0`}
+            >
+              <p className="text-sm font-medium text-[#1A1A2E] truncate">
+                {userName || 'User'}
+              </p>
+
+              <Link
+                to={profilePath}
+                onClick={() => setMobileOpen(false)}
+                className="text-xs text-[#6B7280] hover:text-[#0D631B]"
+              >
+                View Profile
+              </Link>
+            </div>
+          </div>
+
+          <button
+            onClick={logout}
+            title="Logout"
+            className={`
+              text-slate-400  
+              hover:text-red-600
+              p-1.5
+              rounded-lg
+              hover:bg-red-50
+              cursor-pointer
+              transition-colors
+              shrink-0
+              ${collapsed ? "md:hidden" : ""}
+            `}
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

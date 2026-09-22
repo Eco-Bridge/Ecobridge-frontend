@@ -4,10 +4,13 @@ import Footer from "../components/Footer";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { toNumber } from "../utils/formatters";
+import { useState } from "react";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function DashboardLayout({ children }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
-  const userName = user?.name || user?.fullName || user?.firstName || "User";
+  const userName = user?.name ;
   const initials = (userName || "User")
     .split(" ")
     .map((n) => n[0])
@@ -16,12 +19,16 @@ export default function DashboardLayout({ children }) {
     .toUpperCase();
   return (
     <>
+    <ProtectedRoute>
     <div className="min-h-screen bg-[#F8F7FB] flex">
-      <Sidebar />
+      <Sidebar 
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+        />
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-[#E5E7EB] px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pl-10 md:pl-0">
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#E7F7EC] text-[#0D631B]">
               🌿 Citizen Portal
             </span>
@@ -57,6 +64,7 @@ export default function DashboardLayout({ children }) {
       </div>
     </div>
     <Footer />
+    </ProtectedRoute>
     </>
   );
 }

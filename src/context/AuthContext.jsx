@@ -1,3 +1,4 @@
+import {useNavigate} from "react-router-dom"
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   authService,
@@ -13,6 +14,7 @@ function getUserFromResponse(data) {
 }
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(getStoredUser());
   const [token, setToken] = useState(getStoredToken());
   const [isLoading, setIsLoading] = useState(true);
@@ -121,6 +123,7 @@ export function AuthProvider({ children }) {
       clearStoredAuth();
       setUser(null);
       setToken(null);
+      navigate('/login',  { replace: true })
     }
   };
 
