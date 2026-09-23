@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -51,6 +52,7 @@ function App() {
         <Route path="/admin/manage-rewards" element={<ManageRewards />} />
         <Route path="/admin/analytics" element={<Analytics />} />
       </Routes>
+      <VercelAnalytics />
     </AuthProvider>
   );
 }
